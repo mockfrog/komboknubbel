@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Match": {
+      "title": "Match",
+      "description": "Multiplayer game state.",
+      "type": "object",
+      "properties": {
+        "hostId": { "type": "string" },
+        "inviteCode": { "type": "string" },
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished"] },
+        "gameMode": { "type": "string", "enum": ["classic", "kombo"] },
+        "playerIds": { "type": "array" },
+        "players": { "type": "object" },
+        "currentTurnUserId": { "type": "string" },
+        "diceValues": { "type": "array" },
+        "heldDice": { "type": "array" },
+        "diceRolledInLastAction": { "type": "array" },
+        "rollsLeft": { "type": "number" },
+        "scores": { "type": "object" },
+        "playersOrder": { "type": "array" },
+        "turnIndex": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["hostId", "inviteCode", "status", "gameMode", "playerIds", "players", "createdAt", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "High score submitted globally.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "nickname": { "type": "string" },
+        "score": { "type": "number" },
+        "gameMode": { "type": "string", "enum": ["classic", "kombo"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "nickname", "score", "gameMode", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/matches/{matchId}": {
+      "schema": { "$ref": "#/entities/Match" },
+      "description": "Store all active and past matches."
+    },
+    "/leaderboard/{entryId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Global leaderboard entries."
+    }
+  }
+}
