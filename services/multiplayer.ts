@@ -1,7 +1,11 @@
-import { collection, doc, setDoc, getDoc, updateDoc, arrayUnion, serverTimestamp, deleteField } from 'firebase/firestore';
-import { db } from '../firebase';
+import { io } from 'socket.io-client';
 import { GameMode, Scores } from '../types';
 import { getInitialScores, NUM_DICE, INITIAL_HELD_DICE, INITIAL_DICE_VALUES, MAX_ROLLS, CATEGORIES_CONFIG } from '../constants';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '/';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+export const socket = io(SOCKET_URL);
 
 export interface Player {
     userId: string;
@@ -31,22 +35,9 @@ export interface MatchState {
     updatedAt?: any;
 }
 
-function generateCode() {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 export async function createMatch(hostId: string, nickname: string, gameMode: GameMode): Promise<string> {
-    const code = generateCode();
-    const matchRef = doc(db, 'matches', code);
-    
-    const snap = await getDoc(matchRef);
-    if (snap.exists()) {
-        return createMatch(hostId, nickname, gameMode);
-    }
-
-    const initialMatch: any = {
+    const initialState: Partial<MatchState> = {
         hostId,
-        inviteCode: code,
         status: 'waiting',
         gameMode,
         playerIds: [hostId],
@@ -63,47 +54,53 @@ export async function createMatch(hostId: string, nickname: string, gameMode: Ga
         turnIndex: 0,
         column3NextRow: {},
         column4NextRow: {},
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
     };
 
-    await setDoc(matchRef, initialMatch);
-    return code;
+    const response = await fetch(`${API_URL}/matches`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostId, nickname, gameMode, initialState })
+    });
+    const { inviteCode } = await response.json();
+    socket.emit('joinMatch', inviteCode);
+    return inviteCode;
 }
 
 export async function joinMatch(code: string, userId: string, nickname: string) {
-    const matchRef = doc(db, 'matches', code);
-    const snap = await getDoc(matchRef);
-    if (!snap.exists()) {
-        throw new Error("Match nicht gefunden");
-    }
-    const data = snap.data() as MatchState;
+    const response = await fetch(`${API_URL}/matches/${code}`);
+    if (!response.ok) throw new Error("Match nicht gefunden");
+    const data = await response.json() as MatchState;
+    
     if (data.status !== 'waiting') {
         throw new Error("Match hat bereits begonnen oder ist beendet");
     }
     if (data.playerIds.includes(userId)) {
+        socket.emit('joinMatch', code);
         return;
     }
     if (data.playerIds.length >= 6) {
         throw new Error("Match ist voll");
     }
 
-    await updateDoc(matchRef, {
-        playerIds: arrayUnion(userId),
-        [`players.${userId}`]: { userId, nickname },
-        updatedAt: serverTimestamp()
-    });
+    const newState = {
+        ...data,
+        playerIds: [...data.playerIds, userId],
+        players: {
+            ...data.players,
+            [userId]: { userId, nickname }
+        }
+    };
+
+    socket.emit('updateMatch', code, newState);
+    socket.emit('joinMatch', code);
 }
 
 export async function startMatch(code: string, match: MatchState) {
-    const matchRef = doc(db, 'matches', code);
     const order = [...match.playerIds];
-    
     const initialScores: Record<string, Scores> = {};
     const col3Init: Record<string, number> = {};
     const col4Init: Record<string, number> = {};
     
-    // In backend mode, kombo is strictly kombo logic
     const numCols = match.gameMode === 'kombo' ? 6 : 1;
     order.forEach(pid => {
         initialScores[pid] = getInitialScores(numCols);
@@ -111,7 +108,8 @@ export async function startMatch(code: string, match: MatchState) {
         col4Init[pid] = CATEGORIES_CONFIG.length - 1;
     });
 
-    await updateDoc(matchRef, {
+    const newState: MatchState = {
+        ...match,
         status: 'playing',
         playersOrder: order,
         currentTurnUserId: order[0],
@@ -123,8 +121,9 @@ export async function startMatch(code: string, match: MatchState) {
         diceRolledInLastAction: Array(NUM_DICE).fill(false),
         column3NextRow: col3Init,
         column4NextRow: col4Init,
-        updatedAt: serverTimestamp()
-    });
+    };
+
+    socket.emit('updateMatch', code, newState);
 }
 
 export async function rollOnlineDice(matchId: string, userId: string, match: MatchState) {
@@ -134,12 +133,14 @@ export async function rollOnlineDice(matchId: string, userId: string, match: Mat
     const newDice = match.diceValues.map((v, i) => match.heldDice[i] ? v : (Math.floor(Math.random() * 6) + 1));
     const newlyRolled = match.heldDice.map(h => !h);
 
-    await updateDoc(doc(db, 'matches', matchId), {
+    const newState = {
+        ...match,
         diceValues: newDice,
         rollsLeft: match.rollsLeft - 1,
         diceRolledInLastAction: newlyRolled,
-        updatedAt: serverTimestamp()
-    });
+    };
+
+    socket.emit('updateMatch', matchId, newState);
 }
 
 export async function toggleOnlineHoldDie(matchId: string, userId: string, match: MatchState, diceIndex: number) {
@@ -149,10 +150,12 @@ export async function toggleOnlineHoldDie(matchId: string, userId: string, match
     const newHeld = [...match.heldDice];
     newHeld[diceIndex] = !newHeld[diceIndex];
 
-    await updateDoc(doc(db, 'matches', matchId), {
+    const newState = {
+        ...match,
         heldDice: newHeld,
-        updatedAt: serverTimestamp()
-    });
+    };
+
+    socket.emit('updateMatch', matchId, newState);
 }
 
 export async function submitOnlineScore(
@@ -169,7 +172,6 @@ export async function submitOnlineScore(
     let isGameOver = false;
     let nextPlayerId = match.currentTurnUserId;
     
-    // Determine the next active player. Maximum loop is total allowed turns.
     const totalTurns = match.playerIds.length * CATEGORIES_CONFIG.length * (match.gameMode === 'kombo' ? 6 : 1);
     
     for (let attempts = 0; attempts < match.playerIds.length; attempts++) {
@@ -179,43 +181,46 @@ export async function submitOnlineScore(
         nextPlayerId = match.playersOrder[nextTurnIndex % match.playerIds.length];
         
         if (!match.players[nextPlayerId]?.hasLeft) {
-            break; // Found an active player
+            break;
         }
-        
-        // If that player left, skip their turn
         nextTurnIndex++;
     }
 
-    // Checking globally if all players have left
     const allPlayersLeft = match.playerIds.every(id => match.players[id]?.hasLeft);
     if (allPlayersLeft) {
         isGameOver = true;
     }
 
-    const updates: any = {
-        [`scores.${userId}.${categoryKey}`]: match.scores[userId][categoryKey].map((s, idx) => idx === columnIndex ? score : s),
+    const newState: MatchState = {
+        ...match,
         currentTurnUserId: nextPlayerId,
         turnIndex: nextTurnIndex,
         rollsLeft: MAX_ROLLS,
         diceValues: INITIAL_DICE_VALUES,
         heldDice: INITIAL_HELD_DICE,
         diceRolledInLastAction: Array(NUM_DICE).fill(false),
-        updatedAt: serverTimestamp()
+        scores: {
+            ...match.scores,
+            [userId]: {
+                ...match.scores[userId],
+                [categoryKey]: match.scores[userId][categoryKey].map((s, idx) => idx === columnIndex ? score : s)
+            }
+        }
     };
 
     if (isGameOver) {
-        updates.status = 'finished';
+        newState.status = 'finished';
     }
 
     if (match.gameMode === 'kombo') {
         if (columnIndex === 3) {
-            updates[`column3NextRow.${userId}`] = match.column3NextRow[userId] + 1;
+            newState.column3NextRow = { ...match.column3NextRow, [userId]: match.column3NextRow[userId] + 1 };
         } else if (columnIndex === 4) {
-            updates[`column4NextRow.${userId}`] = match.column4NextRow[userId] - 1;
+            newState.column4NextRow = { ...match.column4NextRow, [userId]: match.column4NextRow[userId] - 1 };
         }
     }
 
-    await updateDoc(doc(db, 'matches', matchId), updates);
+    socket.emit('updateMatch', matchId, newState);
 }
 
 export async function leaveOnlineMatch(
@@ -226,31 +231,29 @@ export async function leaveOnlineMatch(
     if (match.status === 'waiting') {
         const newPlayerIds = match.playerIds.filter(id => id !== userId);
         if (newPlayerIds.length === 0) {
-             await updateDoc(doc(db, 'matches', matchId), { 
-                 status: 'finished',
-                 updatedAt: serverTimestamp()
-             });
+             socket.emit('updateMatch', matchId, { ...match, status: 'finished' });
              return;
         }
-        const updates: any = {
+        const updates: Partial<MatchState> = {
             playerIds: newPlayerIds,
-            updatedAt: serverTimestamp()
         };
         if (match.hostId === userId) {
-            updates.hostId = newPlayerIds[0]; // pass host to someone else
+            updates.hostId = newPlayerIds[0];
         }
-        await updateDoc(doc(db, 'matches', matchId), updates);
+        socket.emit('updateMatch', matchId, { ...match, ...updates });
     } else {
-        const updates: any = {
-            [`players.${userId}.hasLeft`]: true,
-            updatedAt: serverTimestamp()
+        const players = {
+            ...match.players,
+            [userId]: { ...match.players[userId], hasLeft: true }
         };
         
-        const allOtherPlayersLeft = match.playerIds.filter(id => id !== userId).every(id => match.players[id]?.hasLeft);
+        const allOtherPlayersLeft = match.playerIds.filter(id => id !== userId).every(id => players[id]?.hasLeft);
+        
+        let updates: Partial<MatchState> = { players };
+
         if (allOtherPlayersLeft) {
             updates.status = 'finished';
         } else if (match.currentTurnUserId === userId && match.status === 'playing') {
-            // Find next active player
             let nextTurnIndex = match.turnIndex;
             let nextPlayerId = match.currentTurnUserId;
             let isGameOver = false;
@@ -263,23 +266,26 @@ export async function leaveOnlineMatch(
                 if (isGameOver) break;
                 
                 nextPlayerId = match.playersOrder[nextTurnIndex % match.playerIds.length];
-                if (!match.players[nextPlayerId]?.hasLeft && nextPlayerId !== userId) {
+                if (!players[nextPlayerId]?.hasLeft && nextPlayerId !== userId) {
                     break;
                 }
             }
             
-            updates.currentTurnUserId = nextPlayerId;
-            updates.turnIndex = nextTurnIndex;
-            updates.rollsLeft = MAX_ROLLS;
-            updates.diceValues = INITIAL_DICE_VALUES;
-            updates.heldDice = INITIAL_HELD_DICE;
-            updates.diceRolledInLastAction = Array(NUM_DICE).fill(false);
+            updates = {
+                ...updates,
+                currentTurnUserId: nextPlayerId,
+                turnIndex: nextTurnIndex,
+                rollsLeft: MAX_ROLLS,
+                diceValues: INITIAL_DICE_VALUES,
+                heldDice: INITIAL_HELD_DICE,
+                diceRolledInLastAction: Array(NUM_DICE).fill(false),
+            };
             
             if (isGameOver) {
                 updates.status = 'finished';
             }
         }
         
-        await updateDoc(doc(db, 'matches', matchId), updates);
+        socket.emit('updateMatch', matchId, { ...match, ...updates });
     }
 }

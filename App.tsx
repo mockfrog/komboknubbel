@@ -38,9 +38,8 @@ const INITIAL_LAST_MOVE_DETAILS: LastMoveDetails = {
   previousDiceRolledInLastActionState: null,
 };
 
-import { auth } from './firebase';
-import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
 import { submitScore } from './services/leaderboard';
+import { v4 as uuidv4 } from 'uuid';
 
 const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void}> = ({onClose, playPopupCloseSound}) => {
   const handleClose = () => {
@@ -185,33 +184,23 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
 const App: React.FC = () => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [onlineMatchId, setOnlineMatchId] = useState<string | null>(() => localStorage.getItem('komboMatchId'));
-  const [onlineUser, setOnlineUser] = useState<{user: User, nickname: string} | null>(null);
+  const [onlineUser, setOnlineUser] = useState<{uid: string, nickname: string} | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            const nickname = localStorage.getItem('komboNickname') || 'Spieler';
-            setOnlineUser({ user, nickname });
-            if (onlineMatchId) {
-                setGameMode('online');
-                setGameStarted(true);
-            }
-            setAuthLoading(false);
-        } else {
-            setOnlineUser(null);
-            try {
-                 await signInAnonymously(auth);
-            } catch(e) { console.error(e); setAuthLoading(false); }
-            
-            if (onlineMatchId) {
-                // Not authenticated anymore, can't auto rejoin
-                setOnlineMatchId(null);
-                localStorage.removeItem('komboMatchId');
-            }
-        }
-    });
-    return unsubscribe;
+    let userId = localStorage.getItem('komboUserId');
+    if (!userId) {
+      userId = uuidv4();
+      localStorage.setItem('komboUserId', userId);
+    }
+    const nickname = localStorage.getItem('komboNickname') || 'Spieler';
+    setOnlineUser({ uid: userId, nickname });
+    
+    if (onlineMatchId) {
+      setGameMode('online');
+      setGameStarted(true);
+    }
+    setAuthLoading(false);
   }, [onlineMatchId]);
 
   const [gameStarted, setGameStarted] = useState<boolean>(false);
@@ -334,7 +323,7 @@ const App: React.FC = () => {
       // Auto-submit score
       if (onlineUser && nickname && gameMode !== 'online') {
         const { overallGrandTotal } = calculateFinalTotalsForGameOverDisplay(scores, currentNumColumns, currentColumnMultipliers);
-        submitScore(onlineUser.user.uid, nickname, overallGrandTotal, gameMode)
+        submitScore(onlineUser.uid, nickname, overallGrandTotal, gameMode)
           .then((res) => {
             setScoreSubmitted(true);
             if (res.isNewRecord) {
@@ -567,7 +556,7 @@ const App: React.FC = () => {
              onGoBack={() => { setGameMode(null); setGameStarted(false); }}
              onMatchJoined={(matchId, user, nickname) => {
                 setOnlineMatchId(matchId);
-                setOnlineUser({ user, nickname });
+                setOnlineUser({ uid: user.uid, nickname });
              }}
           />
         );
@@ -582,7 +571,7 @@ const App: React.FC = () => {
     screenContent = (
       <OnlineGame
         matchId={onlineMatchId}
-        currentUser={onlineUser.user}
+        currentUser={onlineUser}
         onLeave={() => { 
             setGameMode(null); 
             setGameStarted(false); 

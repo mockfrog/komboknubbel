@@ -1,51 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, User, signInAnonymously } from 'firebase/auth';
-import { auth } from '../firebase';
 import { createMatch, joinMatch } from '../services/multiplayer';
 import { GameMode } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 interface MultiplayerLobbyProps {
     onGoBack: () => void;
-    onMatchJoined: (matchId: string, currentUser: User, nickname: string) => void;
+    onMatchJoined: (matchId: string, currentUser: { uid: string }, nickname: string) => void;
 }
 
 export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, onMatchJoined }) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
     const [nickname, setNickname] = useState<string>(() => localStorage.getItem('komboNickname') || '');
     const [inviteCode, setInviteCode] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-                setLoading(false);
-            } else {
-                // Auto sign in anonymously if not authenticated
-                try {
-                    await signInAnonymously(auth);
-                } catch (e: any) {
-                    setLoading(false);
-                    if (e.code === 'auth/operation-not-allowed') {
-                        setError("Gast-Login ist deaktiviert. Bitte schalte 'Anonym' in der Firebase Authentication Console frei.");
-                    } else {
-                        setError(e.message);
-                    }
-                }
-            }
-        });
-        return unsubscribe;
+        let storedUserId = localStorage.getItem('komboUserId');
+        if (!storedUserId) {
+            storedUserId = uuidv4();
+            localStorage.setItem('komboUserId', storedUserId);
+        }
+        setUserId(storedUserId);
+        setLoading(false);
     }, []);
 
     const handleCreateMatch = async (mode: GameMode) => {
-        if (!user || !nickname) return;
+        if (!userId || !nickname) return;
         setLoading(true);
         setError('');
         try {
-            const code = await createMatch(user.uid, nickname, mode);
+            const code = await createMatch(userId, nickname, mode);
             localStorage.setItem('komboMatchId', code);
-            onMatchJoined(code, user, nickname);
+            onMatchJoined(code, { uid: userId }, nickname);
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -54,13 +41,13 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
     };
 
     const handleJoinMatch = async () => {
-        if (!user || !nickname || !inviteCode) return;
+        if (!userId || !nickname || !inviteCode) return;
         setLoading(true);
         setError('');
         try {
-            await joinMatch(inviteCode.trim(), user.uid, nickname);
+            await joinMatch(inviteCode.trim(), userId, nickname);
             localStorage.setItem('komboMatchId', inviteCode.trim().toUpperCase());
-            onMatchJoined(inviteCode.trim().toUpperCase(), user, nickname);
+            onMatchJoined(inviteCode.trim().toUpperCase(), { uid: userId }, nickname);
         } catch (e: any) {
             setError("Fehler beim Beitreten: " + e.message);
         } finally {
@@ -82,7 +69,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
 
                 {error && <div className="bg-red-500/20 text-red-300 p-3 rounded mb-4 text-sm">{error}</div>}
 
-                {user && (
+                {userId && (
                     <div className="space-y-6">
                         <div className="bg-slate-700/50 p-4 rounded-lg flex items-center justify-between border border-slate-600">
                             <div>

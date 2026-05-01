@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
-import { MatchState, startMatch, rollOnlineDice, toggleOnlineHoldDie, submitOnlineScore, leaveOnlineMatch } from '../services/multiplayer';
+import { MatchState, startMatch, rollOnlineDice, toggleOnlineHoldDie, submitOnlineScore, leaveOnlineMatch, socket } from '../services/multiplayer';
 import { submitScore } from '../services/leaderboard';
 import DiceDisplay from './DiceDisplay';
 import Scoresheet from './Scoresheet';
@@ -71,6 +69,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
     const [copied, setCopied] = useState(false);
     const [scoreSubmitted, setScoreSubmitted] = useState(false);
     const [isNewPersonalBest, setIsNewPersonalBest] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (currentUser?.uid && !viewedUserId) {
@@ -98,48 +97,52 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
     const rollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, 'matches', matchId), 
-            (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data() as MatchState;
-                    const prevMatch = matchRef.current;
-                    
-                    if (data.status === 'playing' && prevMatch) {
-                        if (data.diceValues && data.diceValues.join() !== prevMatch.diceValues?.join()) {
-                            // If we were already waiting for a roll to end, clear it
-                            if (rollingTimeoutRef.current) clearTimeout(rollingTimeoutRef.current);
-                            
-                            // Ensure the animation lasts at least 600ms
-                            rollingTimeoutRef.current = setTimeout(() => {
-                                setLocalIsRolling(false);
-                            }, 600);
-                        }
-                    }
-                    
-                    matchRef.current = data;
-                    setMatch(data);
-                    
-                    // Initial tab selection: if we don't have one, pick the current player
-                    if (data.status === 'playing') {
-                        setViewedUserId(prev => {
-                            if (prev && matchRef.current) return prev; // Keep current unless it's first load
-                            return data.currentTurnUserId || currentUser?.uid || '';
-                        });
-                    }
-                } else {
-                    onLeave();
+        socket.emit('joinMatch', matchId);
+
+        const handleUpdate = (data: MatchState) => {
+            const prevMatch = matchRef.current;
+            
+            if (data.status === 'playing' && prevMatch) {
+                if (data.diceValues && data.diceValues.join() !== prevMatch.diceValues?.join()) {
+                    if (rollingTimeoutRef.current) clearTimeout(rollingTimeoutRef.current);
+                    rollingTimeoutRef.current = setTimeout(() => {
+                        setLocalIsRolling(false);
+                    }, 600);
                 }
-            },
-            (error) => {
-                console.error("Firestore OnlineGame error:", error);
-                onLeave();
             }
-        );
+            
+            matchRef.current = data;
+            setMatch(data);
+            setLoading(false);
+
+            if (data.status === 'playing') {
+                setViewedUserId(prev => {
+                    if (prev) return prev; 
+                    return data.currentTurnUserId || currentUser?.uid || '';
+                });
+            }
+        };
+
+        socket.on('matchUpdated', handleUpdate);
+
+        // Fetch initial state
+        const API_URL = import.meta.env.VITE_API_URL || '/api';
+        fetch(`${API_URL}/matches/${matchId}`)
+            .then(res => {
+                if (!res.ok) throw new Error("Match not found");
+                return res.json();
+            })
+            .then(data => handleUpdate(data))
+            .catch(err => {
+                console.error("Fehler beim Laden des Matches:", err);
+                onLeave();
+            });
+
         return () => {
-            unsubscribe();
+            socket.off('matchUpdated', handleUpdate);
             if (rollingTimeoutRef.current) clearTimeout(rollingTimeoutRef.current);
         };
-    }, [matchId, onLeave, currentUser?.uid]); // Basic dependencies only
+    }, [matchId, onLeave, currentUser?.uid]);
 
     const handleStart = async () => {
         if (!match) return;
@@ -150,6 +153,13 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
         if (!match || !currentUser || match.currentTurnUserId !== currentUser.uid || match.rollsLeft === 0) return;
         setLocalIsRolling(true);
         playDiceRollSound();
+        
+        // Safety timeout to stop animation even if socket fails or dice are identical
+        if (rollingTimeoutRef.current) clearTimeout(rollingTimeoutRef.current);
+        rollingTimeoutRef.current = setTimeout(() => {
+            setLocalIsRolling(false);
+        }, 2000);
+
         await rollOnlineDice(matchId, currentUser.uid, match);
     };
 
@@ -225,6 +235,16 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
     };
 
     const isGameOver = match?.status === 'finished';
+    const effectiveNumCols = match?.gameMode === 'kombo' ? 6 : 1;
+
+    const myFinalScore = useMemo(() => {
+        if (!isGameOver || !currentUser || !match) return 0;
+        const myScores = match.scores?.[currentUser.uid];
+        if (!myScores) return 0;
+        const colMultipliers = match.gameMode === 'classic' ? [1] : COLUMN_MULTIPLIERS_KOMBO;
+        const { overallGrandTotal } = calculateFinalTotalsForGameOverDisplay(myScores, effectiveNumCols, colMultipliers);
+        return overallGrandTotal;
+    }, [isGameOver, match, currentUser, effectiveNumCols]);
 
     useEffect(() => {
         if (isGameOver && !scoreSubmitted && currentUser?.uid && match) {
@@ -246,17 +266,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
         }
     }, [isGameOver, scoreSubmitted, currentUser?.uid, match, myFinalScore]);
 
-    const effectiveNumCols = match?.gameMode === 'kombo' ? 6 : 1;
     const currentTurnNickname = match?.players[match?.currentTurnUserId]?.nickname || 'Unbekannt';
-
-    const myFinalScore = useMemo(() => {
-        if (!isGameOver || !currentUser || !match) return 0;
-        const myScores = match.scores?.[currentUser.uid];
-        if (!myScores) return 0;
-        const colMultipliers = match.gameMode === 'classic' ? [1] : COLUMN_MULTIPLIERS_KOMBO;
-        const { overallGrandTotal } = calculateFinalTotalsForGameOverDisplay(myScores, effectiveNumCols, colMultipliers);
-        return overallGrandTotal;
-    }, [isGameOver, match, currentUser, effectiveNumCols]);
 
     if (!match) return <div className="text-white text-center mt-20">Lade Match...</div>;
 

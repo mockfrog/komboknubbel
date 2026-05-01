@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  kombo-knubbel:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3001
+      - VITE_API_URL=/api
+      - VITE_SOCKET_URL=/
+    restart: always
