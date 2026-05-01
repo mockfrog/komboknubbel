@@ -60,9 +60,10 @@ interface OnlineGameProps {
     matchId: string;
     currentUser: any;
     onLeave: () => void;
+    isSoundEnabled: boolean;
 }
 
-const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }) => {
+const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, isSoundEnabled }) => {
     const [match, setMatch] = useState<MatchState | null>(null);
     const [viewedUserId, setViewedUserId] = useState<string>(currentUser?.uid || '');
     const [localIsRolling, setLocalIsRolling] = useState(false);
@@ -78,11 +79,11 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave }
     }, [currentUser, viewedUserId]);
     
     // Make sure we have sound capabilities
-    const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, true);
-    const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, true);
-    const playDiceRollSound = useSound('/sounds/dice-roll.mp3', 0.8, true);
-    const playHighscoreSound = useSound('/sounds/highscore.mp3', 0.8, true);
-    const playGameOverSound = useSound('/sounds/game-over.mp3', 0.7, true);
+    const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
+    const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, isSoundEnabled);
+    const playDiceRollSound = useSound('/sounds/dice-roll.mp3', 0.8, isSoundEnabled);
+    const playHighscoreSound = useSound('/sounds/game-start.mp3', 0.8, isSoundEnabled); // Fallback to game-start
+    const playGameOverSound = useSound('/sounds/popup-close.mp3', 0.7, isSoundEnabled); // Fallback to popup-close
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(matchId)

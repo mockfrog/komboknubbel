@@ -255,8 +255,8 @@ const App: React.FC = () => {
   const playPopupOpenSound = useSound('/sounds/popup-open.mp3', 0.5, isSoundEnabled);
   const playPopupCloseSound = useSound('/sounds/popup-close.mp3', 0.5, isSoundEnabled);
   const playUndoSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
-  const playHighscoreSound = useSound('/sounds/highscore.mp3', 0.8, isSoundEnabled);
-  const playGameOverSound = useSound('/sounds/game-over.mp3', 0.7, isSoundEnabled);
+  const playHighscoreSound = useSound('/sounds/game-start.mp3', 0.8, isSoundEnabled); // Fallback to game-start
+  const playGameOverSound = useSound('/sounds/popup-close.mp3', 0.7, isSoundEnabled); // Fallback to popup-close
 
   const currentNumColumns = gameMode === 'classic' ? 1 : NUM_COLUMNS_KOMBO;
   const currentColumnMultipliers = gameMode === 'classic' ? [1] : COLUMN_MULTIPLIERS_KOMBO;
@@ -572,6 +572,7 @@ const App: React.FC = () => {
       <OnlineGame
         matchId={onlineMatchId}
         currentUser={onlineUser}
+        isSoundEnabled={isSoundEnabled}
         onLeave={() => { 
             setGameMode(null); 
             setGameStarted(false); 
