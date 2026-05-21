@@ -33,3 +33,10 @@ export interface PotentialScores {
 }
 
 export type GameMode = 'kombo' | 'classic' | 'online';
+
+export interface ActiveEffect {
+  type: 'two_rolls_only' | 'no_yahtzee' | 'blind_sheet' | 'immune' | 'score_booster' | 'no_hold';
+  roundsLeft: number;
+  casterId?: string;
+}
+

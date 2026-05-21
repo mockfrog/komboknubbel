@@ -14,6 +14,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
     const [inviteCode, setInviteCode] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [isKhaosMode, setIsKhaosMode] = useState(false);
 
     useEffect(() => {
         let storedUserId = localStorage.getItem('komboUserId');
@@ -30,7 +31,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
         setLoading(true);
         setError('');
         try {
-            const code = await createMatch(userId, nickname, mode);
+            const code = await createMatch(userId, nickname, mode, isKhaosMode);
             localStorage.setItem('komboMatchId', code);
             onMatchJoined(code, { uid: userId }, nickname);
         } catch (e: any) {
@@ -88,6 +89,28 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
                             <>
                                 <div className="border-t border-slate-700 pt-6">
                                     <h3 className="text-xl font-semibold mb-4 text-emerald-400">Neues Spiel erstellen</h3>
+                                    
+                                    {/* Khaos-Modus Toggle */}
+                                    <div className="flex items-center justify-between bg-slate-700/30 p-3 rounded-lg border border-slate-700 mb-4 hover:border-yellow-500/30 transition-colors">
+                                        <div>
+                                            <span className="block text-sm font-bold text-yellow-400 flex items-center gap-1.5">
+                                                💥 Khaos-Modus aktivieren
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                                                Mit PowerUps, Statuseffekten & Glücksrad!
+                                            </span>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isKhaosMode} 
+                                                onChange={(e) => setIsKhaosMode(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-slate-600 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                                        </label>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
                                             onClick={() => handleCreateMatch('kombo')}
