@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { getTopScores, LeaderboardEntry } from '../services/leaderboard';
 import { GameMode } from '../types';
 
@@ -26,7 +27,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ onClose }) => {
         fetchScores();
     }, [mode]);
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
             <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-700 animate-slideUpScale">
                 <div className="bg-slate-700 p-4 border-b border-slate-600 flex justify-between items-center relative">
@@ -62,7 +63,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ onClose }) => {
 
                     <div className="bg-slate-900/50 rounded-lg p-4 min-h-[300px]">
                         {loading ? (
-                            <div className="flex justify-center items-center h-full pt-10">
+                             <div className="flex justify-center items-center h-full pt-10">
                                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400"></div>
                             </div>
                         ) : scores.length === 0 ? (
@@ -101,7 +102,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ onClose }) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

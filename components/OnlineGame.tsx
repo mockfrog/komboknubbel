@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MatchState, startMatch, rollOnlineDice, toggleOnlineHoldDie, submitOnlineScore, leaveOnlineMatch, socket, spinOnlineBonusWheel, useOnlinePowerUp } from '../services/multiplayer';
 import { submitScore } from '../services/leaderboard';
 import DiceDisplay from './DiceDisplay';
@@ -465,7 +466,8 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     }
 
     return (
-        <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
+        <>
+            <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
              <header className="mb-4 sm:mb-6 text-center py-4 sm:py-6 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2">
                     <button 
@@ -484,53 +486,6 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                      <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-1">Multiplayer Modus • {match.gameMode === 'classic' ? '1 Spalte' : '6 Spalten'}</p>
                 </div>
                 
-            {isGameOver && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-                    <div className="bg-slate-800 border-2 border-yellow-400 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_-12px_rgba(250,204,21,0.5)] text-center animate-scaleInUp">
-                        <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500 text-white shadow-lg">
-                             <Trophy className="w-8 h-8" />
-                        </div>
-                        
-                        <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Fertig!</h2>
-                        
-                        <div className="bg-slate-900/50 rounded-2xl p-4 mb-6 border border-slate-700">
-                            <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block mb-1">Deine Punkte</span>
-                            <span className="text-5xl font-black text-emerald-400 tabular-nums">
-                              {myFinalScore}
-                            </span>
-                            
-                            {scoreSubmitted && isNewPersonalBest && (
-                                <div className="mt-4 animate-bounce">
-                                    <span className="bg-yellow-400 text-slate-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                                        Persönliche Bestzeit! 🎉
-                                    </span>
-                                    <p className="text-yellow-400 text-xs font-bold mt-2">Glückwunsch zur Verbesserung!</p>
-                                </div>
-                            )}
-
-                            {scoreSubmitted && !isNewPersonalBest && (
-                                <p className="text-slate-500 text-xs font-bold mt-3">In Bestenliste eingetragen</p>
-                            )}
-
-                            {!scoreSubmitted && (
-                                <div className="flex items-center justify-center gap-2 mt-3 text-slate-400 animate-pulse">
-                                    <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                                    <span className="text-xs font-bold uppercase">Bestenliste wird geprüft...</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-col gap-3">
-                             <button 
-                                onClick={handleLeave} 
-                                className="w-full py-4 bg-yellow-400 hover:bg-yellow-400 text-slate-900 font-bold rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                             >
-                                <RefreshCw className="w-5 h-5" /> Zurück zur Lobby
-                             </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             {!isGameOver && (
                 <div className="mt-3 inline-flex items-center gap-2 px-4 py-1 bg-slate-900/40 rounded-full border border-slate-700/50">
                     <span className="text-slate-400 text-[10px] uppercase tracking-wider">Am Zug: </span>
@@ -738,141 +693,186 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                      )}
                  </div>
              </div>
+          </div>
 
-            {/* Target Selection Modal */}
-            {targetingPowerup && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-                    <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
-                        <span className="text-4xl block mb-2">{POWERUP_DETAILS[targetingPowerup]?.icon}</span>
-                        <h3 className="text-xl font-black text-white mb-1">Ziel auswählen</h3>
-                        <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-                            Auf welchen Gegner möchtest du das PowerUp <strong className="text-yellow-400">{POWERUP_DETAILS[targetingPowerup]?.name}</strong> anwenden?
-                        </p>
+         {/* Modals outside the layout container to prevent stacking context or relative positioning bugs */}
+         {isGameOver && createPortal(
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+                 <div className="bg-slate-800 border-2 border-yellow-400 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_-12px_rgba(250,204,21,0.5)] text-center animate-scaleInUp">
+                     <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500 text-white shadow-lg">
+                          <Trophy className="w-8 h-8" />
+                     </div>
+                     
+                     <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Fertig!</h2>
+                     
+                     <div className="bg-slate-900/50 rounded-2xl p-4 mb-6 border border-slate-700">
+                         <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block mb-1">Deine Punkte</span>
+                         <span className="text-5xl font-black text-emerald-400 tabular-nums">
+                           {myFinalScore}
+                         </span>
+                         
+                         {scoreSubmitted && isNewPersonalBest && (
+                             <div className="mt-4 animate-bounce">
+                                 <span className="bg-yellow-400 text-slate-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                                     Persönliche Bestzeit! 🎉
+                                 </span>
+                                 <p className="text-yellow-400 text-xs font-bold mt-2">Glückwunsch zur Verbesserung!</p>
+                             </div>
+                         )}
 
-                        <div className="space-y-2 mb-4">
-                            {match.playerIds
-                                .filter(pid => pid !== currentUser.uid)
-                                .map(pid => {
-                                    const isImmune = match.activeEffects?.[pid]?.some(eff => eff.type === 'immune');
-                                    return (
-                                        <button
-                                            key={pid}
-                                            onClick={() => handleExecutePowerup(targetingPowerup, pid)}
-                                            className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-between text-sm transition-all duration-150 border
-                                                ${isImmune
-                                                    ? 'bg-slate-900/40 border-slate-800 text-slate-500 cursor-not-allowed'
-                                                    : 'bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200 hover:scale-[1.01]'}`}
-                                            disabled={false}
-                                        >
-                                            <span>{match.players[pid]?.nickname || 'Spieler'}</span>
-                                            {isImmune ? (
-                                                <span className="text-xs text-blue-400 font-normal flex items-center gap-1">
-                                                    🛡️ IMMUN
-                                                </span>
-                                            ) : (
-                                                <span className="text-xs text-slate-400">Auswählen &rarr;</span>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                        </div>
+                         {scoreSubmitted && !isNewPersonalBest && (
+                             <p className="text-slate-500 text-xs font-bold mt-3">In Bestenliste eingetragen</p>
+                         )}
 
-                        <button
-                            onClick={() => setTargetingPowerup(null)}
-                            className="w-full py-2 bg-slate-900 hover:bg-slate-950 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700"
-                        >
-                            Abbrechen
-                        </button>
-                    </div>
-                </div>
-            )}
+                         {!scoreSubmitted && (
+                             <div className="flex items-center justify-center gap-2 mt-3 text-slate-400 animate-pulse">
+                                 <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                                 <span className="text-xs font-bold uppercase">Bestenliste wird geprüft...</span>
+                             </div>
+                         )}
+                     </div>
 
-            {/* Spezialwürfel Modal */}
-            {specialDiceModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
-                    <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(168,85,247,0.4)] text-center relative overflow-hidden flex flex-col items-center animate-scaleInUp">
-                        
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"></div>
+                     <div className="flex flex-col gap-3">
+                          <button 
+                             onClick={handleLeave} 
+                             className="w-full py-4 bg-yellow-400 hover:bg-yellow-400 text-slate-900 font-bold rounded-2xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                          >
+                             <RefreshCw className="w-5 h-5" /> Zurück zur Lobby
+                          </button>
+                     </div>
+                 </div>
+             </div>,
+             document.body
+         )}
 
-                        <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 font-game-title tracking-tight mb-2 uppercase">
-                            Spezialwürfel 🎲
-                        </h3>
-                        <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                            {specialDiceToRoll.length === 2 
-                                ? 'Wahnsinn! Knubbel erzielt! Du darfst 2 Spezialwürfel rollen!' 
-                                : 'Runde beendet! Dein Wurf hat dir einen Spezialwürfel eingebracht!'}
-                        </p>
+         {targetingPowerup && createPortal(
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+                 <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-scaleInUp">
+                     <span className="text-4xl block mb-2">{POWERUP_DETAILS[targetingPowerup]?.icon}</span>
+                     <h3 className="text-xl font-black text-white mb-1">Ziel auswählen</h3>
+                     <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                         Auf welchen Gegner möchtest du das PowerUp <strong className="text-yellow-400">{POWERUP_DETAILS[targetingPowerup]?.name}</strong> anwenden?
+                     </p>
 
-                        {/* Side-by-side or stacked dice display */}
-                        <div className="flex justify-center gap-6 mb-8 w-full">
-                            {specialDiceToRoll.map((puType, idx) => {
-                                const details = POWERUP_DETAILS[puType];
-                                if (!details) return null;
-                                
-                                return (
-                                    <div key={idx} className="flex flex-col items-center w-full max-w-[150px]">
-                                        {/* Die Visual */}
-                                        <div 
-                                            className={`w-28 h-28 rounded-2xl border-2 flex items-center justify-center text-4xl shadow-lg relative overflow-hidden transition-all duration-300
-                                                ${specialDiceRolling 
-                                                    ? 'dice-is-rolling border-purple-500 bg-slate-800 shadow-[0_0_30px_rgba(168,85,247,0.6)]' 
-                                                    : `${details.isOffensive ? 'border-red-500 bg-red-950/30 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'border-blue-500 bg-blue-950/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]'}`
-                                                }`}
-                                            style={{
-                                                animationDuration: specialDiceRolling ? `${0.4 + idx * 0.15}s` : undefined
-                                            }}
-                                        >
-                                            {specialDiceRolling ? (
-                                                <span className="scale-125 filter drop-shadow-md select-none">{rollingIcon}</span>
-                                            ) : (
-                                                <span className="scale-125 filter drop-shadow-md select-none">{details.icon}</span>
-                                            )}
-                                            
-                                            {/* Glow overlay inside die */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none"></div>
-                                        </div>
+                     <div className="space-y-2 mb-4">
+                         {match.playerIds
+                             .filter(pid => pid !== currentUser.uid)
+                             .map(pid => {
+                                 const isImmune = match.activeEffects?.[pid]?.some(eff => eff.type === 'immune');
+                                 return (
+                                     <button
+                                         key={pid}
+                                         disabled={isImmune}
+                                         onClick={() => handleExecutePowerup(targetingPowerup, pid)}
+                                         className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-between text-sm transition-all duration-150 border
+                                             ${isImmune
+                                                 ? 'bg-slate-900/40 border-slate-800 text-slate-500 cursor-not-allowed'
+                                                 : 'bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200 hover:scale-[1.01]'}`}
+                                     >
+                                         <span>{match.players[pid]?.nickname}</span>
+                                         {isImmune && <span className="text-xs text-sky-400 font-normal">Schild aktiv 🛡️</span>}
+                                     </button>
+                                 );
+                             })}
+                     </div>
 
-                                        {/* Die Roll Details */}
-                                        {!specialDiceRolling && (
-                                            <div className="mt-4 space-y-1 w-full animate-fadeIn">
-                                                <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider inline-block
-                                                    ${details.isOffensive ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}
-                                                >
-                                                    {details.isOffensive ? 'Angriff' : 'Eigener'}
-                                                </span>
-                                                <h4 className="text-sm font-black text-white truncate leading-tight mt-1">
-                                                    {details.name}
-                                                </h4>
-                                                <p className="text-[10px] text-slate-400 leading-normal line-clamp-3">
-                                                    {details.desc}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                     <button
+                         onClick={() => setTargetingPowerup(null)}
+                         className="w-full py-2 bg-slate-900 hover:bg-slate-950 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700"
+                     >
+                         Abbrechen
+                     </button>
+                 </div>
+             </div>,
+             document.body
+         )}
 
-                        {/* Close button when settled */}
-                        {!specialDiceRolling ? (
-                            <button
-                                onClick={() => {
-                                    setSpecialDiceModalOpen(false);
-                                    setSpecialDiceToRoll([]);
-                                }}
-                                className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-widest text-xs border border-white/10"
-                            >
-                                Sammeln &amp; Weiterspielen 🚀
-                            </button>
-                        ) : (
-                            <div className="w-full py-4 bg-slate-800 text-slate-500 font-bold rounded-2xl border border-slate-700 select-none animate-pulse uppercase tracking-widest text-xs">
-                                Spezialwürfel rollen... 🎲
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </div>
+         {specialDiceModalOpen && createPortal(
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+                 <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-8 max-w-md w-full shadow-[0_0_50px_rgba(168,85,247,0.4)] text-center relative overflow-hidden flex flex-col items-center animate-scaleInUp">
+                     
+                     <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"></div>
+
+                     <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 font-game-title tracking-tight mb-2 uppercase">
+                         Spezialwürfel 🎲
+                     </h3>
+                     <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                         {specialDiceToRoll.length === 2 
+                             ? 'Wahnsinn! Knubbel erzielt! Du darfst 2 Spezialwürfel rollen!' 
+                             : 'Runde beendet! Dein Wurf hat dir einen Spezialwürfel eingebracht!'}
+                     </p>
+
+                     {/* Side-by-side or stacked dice display */}
+                     <div className="flex justify-center gap-6 mb-8 w-full">
+                         {specialDiceToRoll.map((puType, idx) => {
+                             const details = POWERUP_DETAILS[puType];
+                             if (!details) return null;
+                             
+                             return (
+                                 <div key={idx} className="flex flex-col items-center w-full max-w-[150px]">
+                                     {/* Die Visual */}
+                                     <div 
+                                         className={`w-28 h-28 rounded-2xl border-2 flex items-center justify-center text-4xl shadow-lg relative overflow-hidden transition-all duration-300
+                                             ${specialDiceRolling 
+                                                 ? 'dice-is-rolling border-purple-500 bg-slate-800 shadow-[0_0_30px_rgba(168,85,247,0.6)]' 
+                                                 : `${details.isOffensive ? 'border-red-500 bg-red-950/30 shadow-[0_0_20px_rgba(239,68,68,0.3)]' : 'border-blue-500 bg-blue-950/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]'}`
+                                             }`}
+                                         style={{
+                                             animationDuration: specialDiceRolling ? `${0.4 + idx * 0.15}s` : undefined
+                                         }}
+                                     >
+                                         {specialDiceRolling ? (
+                                             <span className="scale-125 filter drop-shadow-md select-none">{rollingIcon}</span>
+                                         ) : (
+                                             <span className="scale-125 filter drop-shadow-md select-none">{details.icon}</span>
+                                         )}
+                                         
+                                         {/* Glow overlay inside die */}
+                                         <div className="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none"></div>
+                                     </div>
+
+                                     {/* Die Roll Details */}
+                                     {!specialDiceRolling && (
+                                         <div className="mt-4 space-y-1 w-full animate-fadeIn">
+                                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider inline-block
+                                                 ${details.isOffensive ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}
+                                             >
+                                                 {details.isOffensive ? 'Angriff' : 'Eigener'}
+                                             </span>
+                                             <h4 className="text-sm font-black text-white truncate leading-tight mt-1">
+                                                 {details.name}
+                                             </h4>
+                                             <p className="text-[10px] text-slate-400 leading-normal line-clamp-3">
+                                                 {details.desc}
+                                             </p>
+                                         </div>
+                                     )}
+                                 </div>
+                             );
+                         })}
+                     </div>
+
+                     {/* Close button when settled */}
+                     {!specialDiceRolling ? (
+                         <button
+                             onClick={() => {
+                                 setSpecialDiceModalOpen(false);
+                                 setSpecialDiceToRoll([]);
+                             }}
+                             className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-widest text-xs border border-white/10"
+                         >
+                             Sammeln &amp; Weiterspielen 🚀
+                         </button>
+                     ) : (
+                         <div className="w-full py-4 bg-slate-800 text-slate-500 font-bold rounded-2xl border border-slate-700 select-none animate-pulse uppercase tracking-widest text-xs">
+                             Spezialwürfel rollen... 🎲
+                         </div>
+                     )}
+                 </div>
+             </div>,
+             document.body
+         )}
+      </>
     );
 };
 
