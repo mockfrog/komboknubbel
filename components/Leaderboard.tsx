@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getTopScores, LeaderboardEntry } from '../services/leaderboard';
 import { GameMode } from '../types';
@@ -11,6 +11,55 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ onClose }) => {
     const [mode, setMode] = useState<GameMode>('kombo');
     const [scores, setScores] = useState<LeaderboardEntry[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+    const listRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll logic when many scores exist
+    useEffect(() => {
+        const container = listRef.current;
+        if (!container || loading || scores.length === 0 || isHovered) return;
+
+        let animationFrameId: number;
+        const scrollSpeed = 0.4; // super smooth slow speed
+        let pauseTimeout: any = null;
+        let isPaused = false;
+        let accumulatedScroll = container.scrollTop;
+
+        const scroll = () => {
+            if (isPaused) {
+                animationFrameId = requestAnimationFrame(scroll);
+                return;
+            }
+
+            if (container.scrollHeight <= container.clientHeight) return;
+
+            accumulatedScroll += scrollSpeed;
+            container.scrollTop = accumulatedScroll;
+
+            // Check if we reached the bottom (using a 4px safety buffer for zoom subpixels)
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 4) {
+                isPaused = true;
+                pauseTimeout = setTimeout(() => {
+                    // Smoothly scroll back to the top
+                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Wait at the top before restarting
+                    setTimeout(() => {
+                        accumulatedScroll = 0;
+                        isPaused = false;
+                    }, 1500);
+                }, 2000); // 2 second pause at the bottom
+            }
+
+            animationFrameId = requestAnimationFrame(scroll);
+        };
+
+        animationFrameId = requestAnimationFrame(scroll);
+
+        return () => {
+            cancelAnimationFrame(animationFrameId);
+            if (pauseTimeout) clearTimeout(pauseTimeout);
+        };
+    }, [scores, loading, isHovered]);
 
     const getHeaderGradient = () => {
         if (mode === 'kombo_khaos') return 'from-orange-500 via-red-500 to-orange-500';
@@ -118,7 +167,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ onClose }) => {
                         </button>
                     </div>
 
-                    <div className="bg-slate-900/50 rounded-lg p-4 min-h-[300px]">
+                    <div 
+                        ref={listRef}
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                        className="bg-slate-900/50 rounded-lg p-4 h-[320px] max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700/50 scrollbar-track-transparent"
+                    >
                         {loading ? (
                              <div className="flex justify-center items-center h-full pt-10">
                                 <div className={`animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 ${
