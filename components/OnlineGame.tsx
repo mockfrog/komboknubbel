@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import { MatchState, startMatch, rollOnlineDice, toggleOnlineHoldDie, submitOnlineScore, leaveOnlineMatch, socket, spinOnlineBonusWheel, useOnlinePowerUp } from '../services/multiplayer';
 import { submitScore } from '../services/leaderboard';
+import { GameMode } from '../types';
 import DiceDisplay from './DiceDisplay';
 import Scoresheet from './Scoresheet';
 
@@ -391,7 +392,10 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     useEffect(() => {
         if (isGameOver && !scoreSubmitted && currentUser?.uid && match) {
             const nickname = match.players[currentUser.uid]?.nickname || 'Spieler';
-            submitScore(currentUser.uid, nickname, myFinalScore, match.gameMode)
+            const submittedMode = match.isKhaosMode 
+                ? (match.gameMode === 'kombo' ? 'kombo_khaos' : 'classic_khaos') as GameMode 
+                : match.gameMode;
+            submitScore(currentUser.uid, nickname, myFinalScore, submittedMode)
                 .then((res) => {
                     setScoreSubmitted(true);
                     if (res.isNewRecord) {

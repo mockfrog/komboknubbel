@@ -32,7 +32,7 @@ export interface PotentialScores {
  [key: string]: (number | null)[]; // CategoryKey maps to an array of N column scores
 }
 
-export type GameMode = 'kombo' | 'classic' | 'online';
+export type GameMode = 'kombo' | 'classic' | 'online' | 'kombo_khaos' | 'classic_khaos';
 
 export interface ActiveEffect {
   type: 'two_rolls_only' | 'no_yahtzee' | 'blind_sheet' | 'immune' | 'score_booster' | 'no_hold';
