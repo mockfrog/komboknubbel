@@ -285,6 +285,11 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                 setTimeout(() => {
                     showNotification(turnMessage);
                 }, delay);
+
+                // Auto-switch tab to the new active player so other players can follow their dice rolls in real-time
+                if (data.currentTurnUserId) {
+                    setViewedUserId(data.currentTurnUserId);
+                }
             }
 
             matchRef.current = data;
@@ -482,7 +487,6 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
         }
     }, [isGameOver, scoreSubmitted, currentUser?.uid, match, myFinalScore]);
 
-    const currentTurnNickname = match?.players[match?.currentTurnUserId]?.nickname || 'Unbekannt';
 
     if (!match) return <div className="text-white text-center mt-20">Lade Match...</div>;
 
@@ -542,7 +546,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     return (
         <>
             <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
-             <header className="mb-4 sm:mb-6 text-center py-4 sm:py-6 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
+             <header className="mb-3 sm:mb-4 text-center py-2 sm:py-3.5 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
                     <button 
                          onClick={handleLeave} 
@@ -563,27 +567,17 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                 </div>
 
                 <div className="px-4">
-                    <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
+                    <h1 className="text-xl sm:text-3xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
                         {match.gameMode === 'classic' ? 'KLASSISCH' : 'KOMBO-KNUBBEL'}
                     </h1>
                      <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-1">Multiplayer Modus • {match.gameMode === 'classic' ? '1 Spalte' : '6 Spalten'}</p>
                 </div>
-                
-            {!isGameOver && (
-                <div className="mt-3 inline-flex items-center gap-2 px-4 py-1 bg-slate-900/40 rounded-full border border-slate-700/50">
-                    <span className="text-slate-400 text-[10px] uppercase tracking-wider">Am Zug: </span>
-                    <span className={`text-sm font-bold ${myTurn ? 'text-yellow-400' : 'text-white'}`}>
-                        {myTurn ? 'DU bist dran!' : currentTurnNickname}
-                    </span>
-                    {myTurn && <span className="w-2 h-2 bg-yellow-400 rounded-full animate-ping"></span>}
-                </div>
-            )}
+
              </header>
 
              {/* Tab Bar for Players - Styled like Game Tabs */}
              <div className="flex overflow-x-auto space-x-1 mb-4 hide-scrollbar px-1">
                 {match.playersOrder.map(pid => {
-                    const hasActiveEffects = match.isKhaosMode && match.activeEffects?.[pid] && match.activeEffects[pid].length > 0;
                     const hasBonusPoints = match.isKhaosMode && (match.bonusPoints?.[pid] || 0) > 0;
                     return (
                         <button
@@ -598,33 +592,6 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                             <span className="flex items-center gap-1.5">
                                 <span>{match.players[pid]?.nickname}</span>
                                 {match.currentTurnUserId === pid && <span>🎲</span>}
-                                {hasActiveEffects && (
-                                    <span className="flex items-center gap-0.5">
-                                        {match.activeEffects[pid].map((eff, i) => {
-                                            const emojiMap: Record<string, string> = {
-                                                immune: '🛡️',
-                                                blind_sheet: '🌫️',
-                                                two_rolls_only: '💥',
-                                                no_yahtzee: '🚫',
-                                                no_hold: '🪓',
-                                                score_booster: '🚀'
-                                            };
-                                            const titleMap: Record<string, string> = {
-                                                immune: `Immunität (${eff.roundsLeft} Rnd)`,
-                                                blind_sheet: `Nebel (${eff.roundsLeft} Rnd)`,
-                                                two_rolls_only: `2 von 3 Würfel (${eff.roundsLeft} Rnd)`,
-                                                no_yahtzee: `JetztNicht (${eff.roundsLeft} Rnd)`,
-                                                no_hold: `Schwere Last (${eff.roundsLeft} Rnd)`,
-                                                score_booster: `Punkte-Booster (${eff.roundsLeft} Rnd)`
-                                            };
-                                            return (
-                                                <span key={i} className="text-xs" title={titleMap[eff.type] || eff.type}>
-                                                    {emojiMap[eff.type] || '✨'}
-                                                </span>
-                                            );
-                                        })}
-                                    </span>
-                                )}
                                 {hasBonusPoints && (
                                     <span className="text-[10px] text-teal-400 bg-teal-950/40 px-1 py-0.2 rounded border border-teal-500/20" title={`Bonuskonto: +${match.bonusPoints[pid]}`}>
                                         💸+{match.bonusPoints[pid]}
@@ -649,7 +616,11 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                         isCellClickable={(catKey, catIdx, colIdx) => isClickable(catKey as string, catIdx, colIdx)}
                         column3NextRow={match.column3NextRow?.[viewedUserId] || 0}
                         column4NextRow={match.column4NextRow?.[viewedUserId] || 0}
-                        isBlind={match.isKhaosMode && match.activeEffects?.[viewedUserId]?.some(e => e.type === 'blind_sheet')}
+                        isBlind={
+                            match.isKhaosMode && 
+                            match.activeEffects?.[viewedUserId]?.some(e => e.type === 'blind_sheet') &&
+                            (match.currentTurnUserId !== viewedUserId || match.rollsLeft > 0)
+                        }
                         bonusPoints={match.isKhaosMode ? (match.bonusPoints?.[viewedUserId] || 0) : 0}
                     />
                  </div>
@@ -684,21 +655,14 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                          </div>
                      </div>
 
-                     <div className="bg-slate-800/30 p-4 rounded-2xl border border-slate-700/20 text-[11px] text-slate-500">
-                         <div className="flex justify-between mb-1">
-                             <span>Invite Code:</span>
-                             <span className="font-mono text-emerald-400 cursor-pointer hover:text-emerald-300" onClick={handleCopyCode}>{matchId}</span>
-                         </div>
-                     </div>
-
-                     {/* Khaos-Zentrale (Khaos Mode Inventory & Wheels) */}
+                     {/* PowerUps (Khaos Mode Inventory & Wheels) */}
                      {match.isKhaosMode && (
                          <div className="bg-slate-800/60 backdrop-blur-md p-5 rounded-3xl border border-purple-500/20 shadow-2xl relative overflow-hidden space-y-4">
                              {/* Glow behind header */}
                              <div className="absolute -top-10 -right-10 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl"></div>
                              
                              <h3 className="text-xs font-black text-purple-400 font-game-title tracking-widest flex items-center justify-between border-b border-slate-700 pb-2">
-                                 <span>💥 KHAOS-ZENTRALE</span>
+                                 <span>💥 POWERUPS</span>
                                  {myTurn && (
                                      <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 font-black px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
                                          Aktiv
@@ -708,12 +672,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
 
                              {/* PowerUps Inventory List */}
                              <div>
-                                 <h4 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Deine PowerUps:</h4>
-                                 
                                  {(!match.powerups?.[currentUser.uid] || match.powerups[currentUser.uid].length === 0) ? (
                                      <div className="text-center py-4 bg-slate-900/40 rounded-2xl border border-slate-700/50">
                                          <p className="text-slate-500 text-sm italic">Keine PowerUps im Inventar.</p>
-                                         <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">In jedem Zug besteht eine 35%-Chance, völlig zufällig einen Spezialwürfel zu erhalten!</p>
                                      </div>
                                  ) : (
                                      <div className="grid grid-cols-2 gap-2">

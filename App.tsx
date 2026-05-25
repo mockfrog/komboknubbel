@@ -588,7 +588,7 @@ const App: React.FC = () => {
   } else {
     screenContent = (
       <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
-        <header className="mb-4 sm:mb-6 text-center py-4 sm:py-6 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
+        <header className="mb-3 sm:mb-4 text-center py-2 sm:py-3.5 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
             <button 
                 onClick={() => { playButtonClickSound(); setGameStarted(false); setGameMode(null);}} 
@@ -609,7 +609,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="px-4">
-            <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
+            <h1 className="text-xl sm:text-3xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
               {gameMode === 'classic' ? 'KLASSISCH' : 'KOMBO-KNUBBEL'}
             </h1>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-1">Einzelspieler Modus • {gameMode === 'classic' ? '1 Spalte' : '6 Spalten'}</p>
