@@ -133,12 +133,47 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     const [isNewPersonalBest, setIsNewPersonalBest] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    // Make sure we have sound capabilities
+    const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
+    const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, isSoundEnabled);
+    const playDiceRollSound = useSound('/sounds/dice-roll.mp3', 0.8, isSoundEnabled);
+    const playHighscoreSound = useSound('/sounds/game-start.mp3', 0.8, isSoundEnabled); // Fallback to game-start
+    const playGameOverSound = useSound('/sounds/popup-close.mp3', 0.7, isSoundEnabled); // Fallback to popup-close
+
     // Khaos Mode States
     const [targetingPowerup, setTargetingPowerup] = useState<string | null>(null);
     const [specialDiceToRoll, setSpecialDiceToRoll] = useState<string[]>([]);
     const [specialDiceModalOpen, setSpecialDiceModalOpen] = useState(false);
     const [specialDiceRolling, setSpecialDiceRolling] = useState(false);
     const [rollingIcon, setRollingIcon] = useState('❓');
+    const [activeNotification, setActiveNotification] = useState<string | null>(null);
+    const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const showNotification = useCallback((message: string) => {
+        // Skip default game creation/welcome logs
+        if (message.includes('erstellt') || message.includes('Willkommen')) return;
+
+        // "Wer welche Punkte einträgt muss gar nicht angezeigt werden." -> Filter out scoring entries
+        if (message.includes('📝') || (message.includes('trägt') && message.includes('Punkte'))) return;
+
+        const trigger = () => {
+            setActiveNotification(message);
+            playScoreSelectSound();
+            if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
+            
+            notificationTimeoutRef.current = setTimeout(() => {
+                setActiveNotification(null);
+            }, 4000);
+        };
+
+        // "Wer welches Extra bekommmt kann angezeigt werden, aber erst wenn der Spieler, der es bekommt auch sieht."
+        // Delay notifications about special dice/wheel results until after the 2.2s rolling animation completes!
+        if (message.includes('Spezialwürfel') || message.includes('🎰')) {
+            setTimeout(trigger, 2300); // 2.3 seconds delay
+        } else {
+            trigger();
+        }
+    }, [playScoreSelectSound]);
 
     useEffect(() => {
         if (specialDiceRolling) {
@@ -160,12 +195,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
         }
     }, [currentUser, viewedUserId]);
     
-    // Make sure we have sound capabilities
-    const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
-    const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, isSoundEnabled);
-    const playDiceRollSound = useSound('/sounds/dice-roll.mp3', 0.8, isSoundEnabled);
-    const playHighscoreSound = useSound('/sounds/game-start.mp3', 0.8, isSoundEnabled); // Fallback to game-start
-    const playGameOverSound = useSound('/sounds/popup-close.mp3', 0.7, isSoundEnabled); // Fallback to popup-close
+
 
     const handleCopyCode = () => {
         navigator.clipboard.writeText(matchId)
@@ -218,6 +248,44 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                 }
             }
             
+            const myUserId = currentUser?.uid;
+            const isMyTurn = data.currentTurnUserId === myUserId;
+
+            // Check if a special/bonus roll was logged in the new log entries
+            let hasSpecialRoll = false;
+            if (data.isKhaosMode && data.activityLog && data.activityLog.length > 0) {
+                const prevLog = prevMatch?.activityLog || [];
+                const countDiff = data.activityLog.length - prevLog.length;
+                const newEntries = countDiff > 0 ? data.activityLog.slice(data.activityLog.length - countDiff) : [];
+                hasSpecialRoll = newEntries.some(entry => entry.includes('Spezialwürfel') || entry.includes('🎰'));
+            }
+
+            // Show real-time notification on new activity log entries (only to passive players, active player already sees their own actions)
+            if (!isMyTurn && data.isKhaosMode && data.activityLog && data.activityLog.length > 0) {
+                const prevLog = prevMatch?.activityLog || [];
+                if (data.activityLog.length > prevLog.length) {
+                    const countDiff = data.activityLog.length - prevLog.length;
+                    const newEntries = data.activityLog.slice(data.activityLog.length - countDiff);
+                    newEntries.forEach(entry => showNotification(entry));
+                } else if (prevLog.length > 0 && data.activityLog[data.activityLog.length - 1] !== prevLog[prevLog.length - 1]) {
+                    showNotification(data.activityLog[data.activityLog.length - 1]);
+                }
+            }
+
+            // Show turn transition banner when active player changes (for ALL players!)
+            if (prevMatch && data.currentTurnUserId !== prevMatch.currentTurnUserId && data.status === 'playing') {
+                const nextNickname = data.players[data.currentTurnUserId]?.nickname || 'Ein Mitspieler';
+                const isNextMe = data.currentTurnUserId === myUserId;
+                const turnMessage = isNextMe ? `👉 DU bist jetzt am Zug! 🎲` : `👉 ${nextNickname} ist am Zug!`;
+
+                // If a special roll happened in this transition, delay the turn banner to let the special roll animation & banner display first!
+                const delay = hasSpecialRoll ? 6500 : 200;
+                
+                setTimeout(() => {
+                    showNotification(turnMessage);
+                }, delay);
+            }
+
             matchRef.current = data;
             setMatch(data);
             setLoading(false);
@@ -248,6 +316,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
         return () => {
             socket.off('matchUpdated', handleUpdate);
             if (rollingTimeoutRef.current) clearTimeout(rollingTimeoutRef.current);
+            if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
         };
     }, [matchId, onLeave, currentUser?.uid]);
 
@@ -570,7 +639,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                         isCellClickable={(catKey, catIdx, colIdx) => isClickable(catKey as string, catIdx, colIdx)}
                         column3NextRow={match.column3NextRow?.[viewedUserId] || 0}
                         column4NextRow={match.column4NextRow?.[viewedUserId] || 0}
-                        isBlind={match.isKhaosMode && viewedUserId === match.currentTurnUserId && match.rollsLeft > 0 && match.activeEffects?.[viewedUserId]?.some(e => e.type === 'blind_sheet')}
+                        isBlind={match.isKhaosMode && match.activeEffects?.[viewedUserId]?.some(e => e.type === 'blind_sheet')}
                         bonusPoints={match.isKhaosMode ? (match.bonusPoints?.[viewedUserId] || 0) : 0}
                     />
                  </div>
@@ -629,12 +698,12 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
 
                              {/* PowerUps Inventory List */}
                              <div>
-                                 <h4 className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Deine PowerUps:</h4>
+                                 <h4 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Deine PowerUps:</h4>
                                  
                                  {(!match.powerups?.[currentUser.uid] || match.powerups[currentUser.uid].length === 0) ? (
                                      <div className="text-center py-4 bg-slate-900/40 rounded-2xl border border-slate-700/50">
-                                         <p className="text-slate-500 text-xs italic">Keine PowerUps im Inventar.</p>
-                                         <p className="text-[9px] text-slate-600 mt-1 leading-relaxed">Erziele Knubbel, Straßen, Full House oder Chance &ge; 25 für Bonus-Spins!</p>
+                                         <p className="text-slate-500 text-sm italic">Keine PowerUps im Inventar.</p>
+                                         <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">In jedem Zug besteht eine 35%-Chance, völlig zufällig einen Spezialwürfel zu erhalten!</p>
                                      </div>
                                  ) : (
                                      <div className="grid grid-cols-2 gap-2">
@@ -659,12 +728,12 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                                                      <div className="flex justify-between items-start w-full">
                                                          <span className="text-sm">{pu.icon}</span>
                                                          {pu.isOffensive ? (
-                                                             <span className="text-[8px] bg-red-950/60 text-red-400 px-1 py-0.2 rounded font-sans uppercase">Angriff</span>
+                                                             <span className="text-[10px] bg-red-950/60 text-red-400 px-1.5 py-0.5 rounded font-sans uppercase">Angriff</span>
                                                          ) : (
-                                                             <span className="text-[8px] bg-blue-950/60 text-blue-400 px-1 py-0.2 rounded font-sans uppercase">Eigener</span>
+                                                             <span className="text-[10px] bg-blue-950/60 text-blue-400 px-1.5 py-0.5 rounded font-sans uppercase">Eigener</span>
                                                          )}
                                                      </div>
-                                                     <div className="mt-1 font-bold truncate leading-tight text-white group-hover:text-yellow-300 transition-colors w-full text-[10px]">
+                                                     <div className="mt-1 font-black truncate leading-tight text-white group-hover:text-yellow-300 transition-colors w-full text-xs">
                                                          {pu.name}
                                                      </div>
                                                  </button>
@@ -676,25 +745,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                          </div>
                      )}
 
-                     {/* Khaos-Protokoll (Activity Feed) */}
-                     {match.isKhaosMode && match.activityLog && match.activityLog.length > 0 && (
-                         <div className="bg-slate-800/40 backdrop-blur-sm p-4 rounded-3xl border border-slate-700/30 shadow-inner space-y-3">
-                             <h4 className="text-xs text-purple-400 font-bold uppercase tracking-widest border-b border-slate-700 pb-1.5 flex items-center justify-between">
-                                 <span>📜 KHAOS-PROTOKOLL</span>
-                                 <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-ping"></span>
-                             </h4>
-                             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 hide-scrollbar">
-                                 {match.activityLog.slice().reverse().map((log, i) => (
-                                     <div 
-                                         key={i} 
-                                         className="text-[10px] leading-normal p-2 bg-slate-900/40 rounded-xl border border-slate-700/20 text-slate-300 font-sans shadow-sm"
-                                     >
-                                         {log}
-                                     </div>
-                                 ))}
-                             </div>
-                         </div>
-                     )}
+                     {/* Khaos-Protokoll (Activity Feed) has been removed in favor of real-time overlay notifications */}
                  </div>
              </div>
           </div>
@@ -753,8 +804,8 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
                  <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center animate-scaleInUp">
                      <span className="text-4xl block mb-2">{POWERUP_DETAILS[targetingPowerup]?.icon}</span>
-                     <h3 className="text-xl font-black text-white mb-1">Ziel auswählen</h3>
-                     <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                     <h3 className="text-2xl font-black text-white mb-1">Ziel auswählen</h3>
+                     <p className="text-sm text-slate-400 mb-4 leading-relaxed">
                          Auf welchen Gegner möchtest du das PowerUp <strong className="text-yellow-400">{POWERUP_DETAILS[targetingPowerup]?.name}</strong> anwenden?
                      </p>
 
@@ -768,7 +819,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                                          key={pid}
                                          disabled={isImmune}
                                          onClick={() => handleExecutePowerup(targetingPowerup, pid)}
-                                         className={`w-full py-3 px-4 rounded-xl font-bold flex items-center justify-between text-sm transition-all duration-150 border
+                                         className={`w-full py-3.5 px-4 rounded-xl font-black flex items-center justify-between text-base transition-all duration-150 border
                                              ${isImmune
                                                  ? 'bg-slate-900/40 border-slate-800 text-slate-500 cursor-not-allowed'
                                                  : 'bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200 hover:scale-[1.01]'}`}
@@ -782,7 +833,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
 
                      <button
                          onClick={() => setTargetingPowerup(null)}
-                         className="w-full py-2 bg-slate-900 hover:bg-slate-950 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700"
+                         className="w-full py-3 bg-slate-900 hover:bg-slate-950 text-slate-400 hover:text-white rounded-xl text-sm font-bold transition-all border border-slate-700"
                      >
                          Abbrechen
                      </button>
@@ -800,7 +851,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                      <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 font-game-title tracking-tight mb-2 uppercase">
                          Spezialwürfel 🎲
                      </h3>
-                     <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+                     <p className="text-sm text-slate-400 mb-6 leading-relaxed">
                          {specialDiceToRoll.length === 2 
                              ? 'Wahnsinn! Knubbel erzielt! Du darfst 2 Spezialwürfel rollen!' 
                              : 'Runde beendet! Dein Wurf hat dir einen Spezialwürfel eingebracht!'}
@@ -837,16 +888,16 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
 
                                      {/* Die Roll Details */}
                                      {!specialDiceRolling && (
-                                         <div className="mt-4 space-y-1 w-full animate-fadeIn">
-                                             <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider inline-block
+                                         <div className="mt-4 space-y-1 w-full animate-fadeIn text-center">
+                                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider inline-block
                                                  ${details.isOffensive ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}
                                              >
                                                  {details.isOffensive ? 'Angriff' : 'Eigener'}
                                              </span>
-                                             <h4 className="text-sm font-black text-white truncate leading-tight mt-1">
+                                             <h4 className="text-base font-black text-white truncate leading-tight mt-1">
                                                  {details.name}
                                              </h4>
-                                             <p className="text-[10px] text-slate-400 leading-normal line-clamp-3">
+                                             <p className="text-xs text-slate-400 leading-normal line-clamp-3 mt-1.5">
                                                  {details.desc}
                                              </p>
                                          </div>
@@ -863,15 +914,33 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                                  setSpecialDiceModalOpen(false);
                                  setSpecialDiceToRoll([]);
                              }}
-                             className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-widest text-xs border border-white/10"
+                             className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all duration-200 uppercase tracking-widest text-sm border border-white/10"
                          >
                              Sammeln &amp; Weiterspielen 🚀
                          </button>
                      ) : (
-                         <div className="w-full py-4 bg-slate-800 text-slate-500 font-bold rounded-2xl border border-slate-700 select-none animate-pulse uppercase tracking-widest text-xs">
+                         <div className="w-full py-4 bg-slate-800 text-slate-500 font-bold rounded-2xl border border-slate-700 select-none animate-pulse uppercase tracking-widest text-sm">
                              Spezialwürfel rollen... 🎲
                          </div>
                      )}
+                 </div>
+             </div>,
+             document.body
+         )}
+
+         {/* Animated PowerUp Banner Notification */}
+         {activeNotification && createPortal(
+             <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] w-full max-w-md px-4 animate-slideDown pointer-events-none">
+                 <div className="bg-slate-800/90 backdrop-blur-md border border-purple-500/40 rounded-2xl p-4 shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center gap-3 relative overflow-hidden">
+                     {/* Glow line at the bottom */}
+                     <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 animate-pulse w-full"></div>
+                     
+                     <div className="flex-1">
+                         <span className="text-[10px] text-purple-400 font-black tracking-widest uppercase block mb-0.5">💥 KHAOS-EVENT</span>
+                         <p className="text-sm font-bold text-slate-100 leading-snug">
+                             {activeNotification}
+                         </p>
+                     </div>
                  </div>
              </div>,
              document.body

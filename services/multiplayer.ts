@@ -229,25 +229,14 @@ export async function submitOnlineScore(
             }
         }
 
-        // Trigger spins
+        // Trigger spins: flat 35% chance per turn to get 1 bonus roll, completely independent of score (better balancing)
         let earnedSpins = 0;
         const nickname = match.players[userId]?.nickname || 'Spieler';
         const categoryLabel = CATEGORIES_CONFIG.find(c => c.key === categoryKey)?.label || categoryKey;
 
-        if (finalScoreValue > 0) {
-            if (categoryKey === 'YAHTZEE') {
-                earnedSpins = 2;
-                activityEntries.push(`💥 ${nickname} erzielt einen Knubbel! (+2 Bonus-Würfe)`);
-            } else if (['FULL_HOUSE', 'SMALL_STRAIGHT', 'LARGE_STRAIGHT'].includes(categoryKey)) {
-                earnedSpins = 1;
-                activityEntries.push(`✨ ${nickname} erzielt ${categoryLabel}! (+1 Bonus-Wurf)`);
-            } else if (categoryKey === 'CHANCE' && score >= 25) {
-                earnedSpins = 1;
-                activityEntries.push(`🍀 ${nickname} erzielt hohe Chance (${score} Pkt)! (+1 Bonus-Wurf)`);
-            } else if (Math.random() < 0.15) {
-                earnedSpins = 1;
-                activityEntries.push(`🎁 Zufalls-Bonus für ${nickname}! (+1 Bonus-Wurf)`);
-            }
+        if (Math.random() < 0.35) {
+            earnedSpins = 1;
+            activityEntries.push(`🎁 Überraschungs-Khaos! ${nickname} erhält einen Spezialwürfel!`);
         }
 
         activityEntries.push(`📝 ${nickname} trägt ${finalScoreValue} Punkte bei ${categoryLabel} ein${usedBooster ? ' (2x Booster aktiv! 🚀)' : ''}.`);
