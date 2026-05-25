@@ -559,6 +559,8 @@ const App: React.FC = () => {
                 setOnlineMatchId(matchId);
                 setOnlineUser({ uid: user.uid, nickname });
              }}
+             isSoundEnabled={isSoundEnabled}
+             onToggleSound={toggleSound}
           />
         );
     } else {
@@ -574,6 +576,7 @@ const App: React.FC = () => {
         matchId={onlineMatchId}
         currentUser={onlineUser}
         isSoundEnabled={isSoundEnabled}
+        onToggleSound={toggleSound}
         onLeave={() => { 
             setGameMode(null); 
             setGameStarted(false); 

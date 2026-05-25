@@ -122,9 +122,10 @@ interface OnlineGameProps {
     currentUser: any;
     onLeave: () => void;
     isSoundEnabled: boolean;
+    onToggleSound?: () => void;
 }
 
-const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, isSoundEnabled }) => {
+const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, isSoundEnabled, onToggleSound }) => {
     const [match, setMatch] = useState<MatchState | null>(null);
     const [viewedUserId, setViewedUserId] = useState<string>(currentUser?.uid || '');
     const [localIsRolling, setLocalIsRolling] = useState(false);
@@ -542,13 +543,22 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
         <>
             <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
              <header className="mb-4 sm:mb-6 text-center py-4 sm:py-6 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
                     <button 
                          onClick={handleLeave} 
                          className="p-2 bg-slate-800/50 hover:bg-red-500/20 rounded-lg transition-all text-slate-400 hover:text-red-400"
                          title="Verlassen"
                      >
                         <span className="material-icons-outlined">logout</span>
+                    </button>
+                    <button
+                        onClick={() => { playButtonClickSound(); onToggleSound?.(); }}
+                        className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-all text-slate-400 hover:text-white"
+                        title={isSoundEnabled ? 'Ton aus' : 'Ton an'}
+                    >
+                        <span className="material-icons-outlined text-sm">
+                            {isSoundEnabled ? 'volume_up' : 'volume_off'}
+                        </span>
                     </button>
                 </div>
 
