@@ -97,13 +97,82 @@ const BackgroundDice: React.FC = () => {
       return { x, y, vx, vy, angle, vAngle, el };
     });
 
+    // Device orientation physics
+    let gravityX = 0;
+    let gravityY = 0;
+    let hasSensor = false;
+    let lastGamma: number | null = null;
+    let lastBeta: number | null = null;
+
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      const gamma = event.gamma;
+      const beta = event.beta;
+
+      if (gamma !== null && beta !== null) {
+        // Only mark sensor as active if the orientation values actually change.
+        // This prevents desktop browsers that fire static 0-events from freezing the animation.
+        if (lastGamma !== null && lastBeta !== null) {
+          const diff = Math.abs(gamma - lastGamma) + Math.abs(beta - lastBeta);
+          if (diff > 0.1) {
+            hasSensor = true;
+          }
+        }
+        lastGamma = gamma;
+        lastBeta = beta;
+
+        if (hasSensor) {
+          // gamma (left/right tilt) maps to X axis, beta (front/back tilt) maps to Y axis
+          gravityX = gamma * 0.015;
+          gravityY = beta * 0.015;
+        }
+      }
+    };
+
+    const requestPermission = () => {
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof (DeviceOrientationEvent as any).requestPermission === 'function'
+      ) {
+        (DeviceOrientationEvent as any).requestPermission()
+          .then((state: string) => {
+            if (state === 'granted') {
+              window.addEventListener('deviceorientation', handleOrientation);
+            }
+          })
+          .catch(console.error);
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    };
+
+    window.addEventListener('click', requestPermission, { once: true });
+    window.addEventListener('touchstart', requestPermission, { once: true });
+    window.addEventListener('deviceorientation', handleOrientation);
+
     let animationId: number;
     const updatePhysics = () => {
       const currentSize = window.innerWidth < 768 ? 64 : 96;
 
-      // 1. Move dice
+      // 1. Move dice and apply tilt physics if available
       states.forEach(state => {
         if (!state.el) return;
+
+        if (hasSensor) {
+          state.vx += gravityX;
+          state.vy += gravityY;
+          // Apply friction so they can rest when flat
+          state.vx *= 0.98;
+          state.vy *= 0.98;
+
+          // Limit speed
+          const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
+          const maxSpeed = 12;
+          if (speed > maxSpeed) {
+            state.vx = (state.vx / speed) * maxSpeed;
+            state.vy = (state.vy / speed) * maxSpeed;
+          }
+        }
+
         state.x += state.vx;
         state.y += state.vy;
         state.angle += state.vAngle;
@@ -125,25 +194,23 @@ const BackgroundDice: React.FC = () => {
             const nx = dx / (dist || 1);
             const ny = dy / (dist || 1);
 
-            // Positional correction to prevent sticking
+            // Positional correction
             s1.x -= nx * (overlap / 2);
             s1.y -= ny * (overlap / 2);
             s2.x += nx * (overlap / 2);
             s2.y += ny * (overlap / 2);
 
-            // Relative velocity projected onto normal
             const kx = s1.vx - s2.vx;
             const ky = s1.vy - s2.vy;
             const p = nx * kx + ny * ky;
 
-            // Only bounce if they are moving towards each other
             if (p > 0) {
-              s1.vx -= nx * p;
-              s1.vy -= ny * p;
-              s2.vx += nx * p;
-              s2.vy += ny * p;
+              const restitution = hasSensor ? 0.85 : 1.0;
+              s1.vx -= nx * p * restitution;
+              s1.vy -= ny * p * restitution;
+              s2.vx += nx * p * restitution;
+              s2.vy += ny * p * restitution;
 
-              // Swap and add slight spin variation on collision
               const tempVAngle = s1.vAngle;
               s1.vAngle = s2.vAngle * 0.8 + (Math.random() - 0.5) * 4;
               s2.vAngle = tempVAngle * 0.8 + (Math.random() - 0.5) * 4;
@@ -153,26 +220,27 @@ const BackgroundDice: React.FC = () => {
       }
 
       // 3. Resolve boundary collisions and render
+      const bounceRestitution = hasSensor ? 0.7 : 1.0;
       states.forEach(state => {
         if (!state.el) return;
 
         if (state.x <= 0) {
           state.x = 0;
-          state.vx = Math.abs(state.vx);
+          state.vx = Math.abs(state.vx) * bounceRestitution;
           state.vAngle = (Math.random() - 0.5) * 8;
         } else if (state.x >= width - currentSize) {
           state.x = width - currentSize;
-          state.vx = -Math.abs(state.vx);
+          state.vx = -Math.abs(state.vx) * bounceRestitution;
           state.vAngle = (Math.random() - 0.5) * 8;
         }
 
         if (state.y <= 0) {
           state.y = 0;
-          state.vy = Math.abs(state.vy);
+          state.vy = Math.abs(state.vy) * bounceRestitution;
           state.vAngle = (Math.random() - 0.5) * 8;
         } else if (state.y >= height - currentSize) {
           state.y = height - currentSize;
-          state.vy = -Math.abs(state.vy);
+          state.vy = -Math.abs(state.vy) * bounceRestitution;
           state.vAngle = (Math.random() - 0.5) * 8;
         }
 
@@ -187,6 +255,9 @@ const BackgroundDice: React.FC = () => {
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('deviceorientation', handleOrientation);
+      window.removeEventListener('click', requestPermission);
+      window.removeEventListener('touchstart', requestPermission);
     };
   }, []);
 
