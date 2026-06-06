@@ -7,6 +7,9 @@ import Leaderboard from './Leaderboard';
 interface StartScreenProps {
   onStartGame: (mode: GameMode) => void;
   onShowRules: () => void;
+  showLeaderboard: boolean;
+  onShowLeaderboard: () => void;
+  onCloseLeaderboard: () => void;
   isSoundEnabled: boolean;
   onToggleSound: () => void;
 }
@@ -292,12 +295,12 @@ const BackgroundDice: React.FC = () => {
 };
 
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isSoundEnabled, onToggleSound }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ 
+  onStartGame, onShowRules, showLeaderboard, onShowLeaderboard, onCloseLeaderboard, isSoundEnabled, onToggleSound 
+}) => {
   const playButtonSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
   const playGameStartSound = useSound('/sounds/game-start.mp3', 0.7, isSoundEnabled);
 
-
-  const [showLeaderboard, setShowLeaderboard] = React.useState(false);
   const [nickname, setNickname] = React.useState(() => localStorage.getItem('komboNickname') || '');
   const [error, setError] = React.useState<string | null>(null);
 
@@ -345,7 +348,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
 
   const handleShowLeaderboardClick = () => {
     playButtonSound();
-    setShowLeaderboard(true);
+    onShowLeaderboard();
   };
 
 
@@ -434,7 +437,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
         </button>
       </div>
       {showLeaderboard && (
-          <Leaderboard onClose={() => setShowLeaderboard(false)} />
+          <Leaderboard onClose={onCloseLeaderboard} />
       )}
       <footer className="absolute bottom-6 left-0 right-0 text-center text-slate-400 text-sm animate-fadeInScaleUp" style={{ animationDelay: '1s', opacity: 0 }}>
           <p>&copy; {new Date().getFullYear()} mockfrog</p>

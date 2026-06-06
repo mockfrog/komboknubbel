@@ -225,6 +225,7 @@ const App: React.FC = () => {
   const [diceRolledInLastAction, setDiceRolledInLastAction] = useState<boolean[]>(Array(NUM_DICE).fill(false));
   
   const [showNewGameConfirmDialog, setShowNewGameConfirmDialog] = useState<boolean>(false);
+  const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
 
   const [lastMoveDetails, setLastMoveDetails] = useState<LastMoveDetails>(INITIAL_LAST_MOVE_DETAILS);
   const [canUndoLastScore, setCanUndoLastScore] = useState<boolean>(false);
@@ -249,6 +250,69 @@ const App: React.FC = () => {
   const toggleSound = useCallback(() => {
     setIsSoundEnabled(prev => !prev);
   }, []);
+
+  const exitGameToMainMenu = useCallback(() => {
+    setGameStarted(false);
+    setGameMode(null);
+    setOnlineMatchId(null);
+    localStorage.removeItem('komboMatchId');
+    setGameOver(false);
+    setShowSubmitScoreModal(false);
+    setShowLeaderboard(false);
+  }, []);
+
+  const lastStateRef = React.useRef({ gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard });
+  lastStateRef.current = { gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard };
+
+  const depthRef = React.useRef(0);
+
+  // Synchronize browser history popstate (Back button) with React states
+  useEffect(() => {
+    if (window.history.state === null) {
+      window.history.replaceState({ depth: 0 }, '');
+    } else if (window.history.state && typeof window.history.state.depth === 'number') {
+      depthRef.current = window.history.state.depth;
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state;
+      const targetDepth = state && typeof state.depth === 'number' ? state.depth : 0;
+      const currentDepth = depthRef.current;
+      
+      depthRef.current = targetDepth;
+
+      if (targetDepth < currentDepth) {
+        if (targetDepth < 2) {
+          setShowRules(false);
+          setShowNewGameConfirmDialog(false);
+          setGameOver(false);
+          setShowLeaderboard(false);
+        }
+        if (targetDepth < 1) {
+          exitGameToMainMenu();
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [exitGameToMainMenu]);
+
+  // Synchronize React state changes to browser history
+  useEffect(() => {
+    const hasPopup = showRules || showNewGameConfirmDialog || gameOver || showLeaderboard;
+    const targetDepth = (gameStarted ? 1 : 0) + (hasPopup ? 1 : 0);
+    const currentDepth = depthRef.current;
+
+    if (targetDepth > currentDepth) {
+      window.history.pushState({ depth: targetDepth }, '');
+      depthRef.current = targetDepth;
+    } else if (targetDepth < currentDepth) {
+      const diff = currentDepth - targetDepth;
+      window.history.go(-diff);
+      depthRef.current = targetDepth;
+    }
+  }, [gameStarted, showRules, showNewGameConfirmDialog, gameOver, showLeaderboard]);
 
   const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
   const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, isSoundEnabled);
@@ -545,6 +609,12 @@ const App: React.FC = () => {
           playPopupOpenSound();
           setShowRules(true);
         }}
+        showLeaderboard={showLeaderboard}
+        onShowLeaderboard={() => {
+          playPopupOpenSound();
+          setShowLeaderboard(true);
+        }}
+        onCloseLeaderboard={() => setShowLeaderboard(false)}
         isSoundEnabled={isSoundEnabled}
         onToggleSound={toggleSound}
       />
