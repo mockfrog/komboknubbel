@@ -122,8 +122,8 @@ const BackgroundDice: React.FC = () => {
 
         if (hasSensor) {
           // gamma (left/right tilt) maps to X axis, beta (front/back tilt) maps to Y axis
-          gravityX = gamma * 0.015;
-          gravityY = beta * 0.015;
+          gravityX = gamma * 0.0075;
+          gravityY = beta * 0.0075;
         }
       }
     };
@@ -149,20 +149,30 @@ const BackgroundDice: React.FC = () => {
     window.addEventListener('touchstart', requestPermission, { once: true });
     window.addEventListener('deviceorientation', handleOrientation);
 
+    let lastTime = performance.now();
     let animationId: number;
     const updatePhysics = () => {
       const currentSize = window.innerWidth < 768 ? 64 : 96;
+
+      const now = performance.now();
+      // Delta time normalized to 16.67ms (1.0 at 60fps)
+      let dt = (now - lastTime) / 16.67;
+      // Cap delta time to prevent physics glitches during tab switches or lag
+      if (dt > 4) dt = 4;
+      lastTime = now;
 
       // 1. Move dice and apply tilt physics if available
       states.forEach(state => {
         if (!state.el) return;
 
         if (hasSensor) {
-          state.vx += gravityX;
-          state.vy += gravityY;
-          // Apply friction so they can rest when flat
-          state.vx *= 0.98;
-          state.vy *= 0.98;
+          state.vx += gravityX * dt;
+          state.vy += gravityY * dt;
+          
+          // Exponential decay for friction to remain framerate independent
+          const decay = Math.pow(0.99, dt);
+          state.vx *= decay;
+          state.vy *= decay;
 
           // Limit speed
           const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy);
@@ -173,9 +183,9 @@ const BackgroundDice: React.FC = () => {
           }
         }
 
-        state.x += state.vx;
-        state.y += state.vy;
-        state.angle += state.vAngle;
+        state.x += state.vx * dt;
+        state.y += state.vy * dt;
+        state.angle += state.vAngle * dt;
       });
 
       // 2. Resolve mutual collisions between dice (elastic collision)
