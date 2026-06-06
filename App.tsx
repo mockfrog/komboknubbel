@@ -182,6 +182,43 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
   </div>
 )};
 
+const ExitConfirmationDialog: React.FC<{onConfirm: () => void, onCancel: () => void, playButtonClickSound: () => void, playPopupCloseSound: () => void}> = ({ onConfirm, onCancel, playButtonClickSound, playPopupCloseSound }) => {
+  const handleConfirm = () => {
+      playButtonClickSound();
+      onConfirm();
+  };
+  const handleCancel = () => {
+      playPopupCloseSound();
+      onCancel();
+  };
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60] animate-fadeIn">
+      <div className="bg-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 animate-scaleInUp">
+        <h3 className="text-xl font-bold mb-4 text-yellow-400 font-game-title">Spiel verlassen?</h3>
+        <p className="text-slate-200 mb-6">
+          Dein aktueller Spielstand geht verloren. Bist du sicher, dass du das Spiel verlassen und zum Hauptmenü zurückkehren möchtest?
+        </p>
+        <div className="flex justify-end space-x-3">
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 bg-slate-500 hover:bg-slate-400 text-white rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300"
+            aria-label="Abbrechen und Spiel fortsetzen"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleConfirm}
+            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-md font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+            aria-label="Bestätigen und Spiel verlassen"
+          >
+            Verlassen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [onlineMatchId, setOnlineMatchId] = useState<string | null>(() => localStorage.getItem('komboMatchId'));
@@ -226,6 +263,7 @@ const App: React.FC = () => {
   
   const [showNewGameConfirmDialog, setShowNewGameConfirmDialog] = useState<boolean>(false);
   const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
+  const [showExitConfirmDialog, setShowExitConfirmDialog] = useState<boolean>(false);
 
   const [lastMoveDetails, setLastMoveDetails] = useState<LastMoveDetails>(INITIAL_LAST_MOVE_DETAILS);
   const [canUndoLastScore, setCanUndoLastScore] = useState<boolean>(false);
@@ -259,10 +297,11 @@ const App: React.FC = () => {
     setGameOver(false);
     setShowSubmitScoreModal(false);
     setShowLeaderboard(false);
+    setShowExitConfirmDialog(false);
   }, []);
 
-  const lastStateRef = React.useRef({ gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard });
-  lastStateRef.current = { gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard };
+  const lastStateRef = React.useRef({ gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard, showExitConfirmDialog });
+  lastStateRef.current = { gameStarted, showRules, showNewGameConfirmDialog, gameOver, gameMode, showLeaderboard, showExitConfirmDialog };
 
   const depthRef = React.useRef(0);
 
@@ -287,9 +326,19 @@ const App: React.FC = () => {
           setShowNewGameConfirmDialog(false);
           setGameOver(false);
           setShowLeaderboard(false);
+          setShowExitConfirmDialog(false);
         }
         if (targetDepth < 1) {
-          exitGameToMainMenu();
+          const { gameStarted: started, gameOver: over } = lastStateRef.current;
+          if (started && !over) {
+            // A game is in progress! Prevent exit and show exit confirmation dialog
+            setShowExitConfirmDialog(true);
+            // Push history state back to 1 to keep user on the game screen
+            window.history.pushState({ depth: 1 }, '');
+            depthRef.current = 1;
+          } else {
+            exitGameToMainMenu();
+          }
         }
       }
     };
@@ -300,7 +349,7 @@ const App: React.FC = () => {
 
   // Synchronize React state changes to browser history
   useEffect(() => {
-    const hasPopup = showRules || showNewGameConfirmDialog || gameOver || showLeaderboard;
+    const hasPopup = showRules || showNewGameConfirmDialog || gameOver || showLeaderboard || showExitConfirmDialog;
     const targetDepth = (gameStarted ? 1 : 0) + (hasPopup ? 1 : 0);
     const currentDepth = depthRef.current;
 
@@ -312,7 +361,7 @@ const App: React.FC = () => {
       window.history.go(-diff);
       depthRef.current = targetDepth;
     }
-  }, [gameStarted, showRules, showNewGameConfirmDialog, gameOver, showLeaderboard]);
+  }, [gameStarted, showRules, showNewGameConfirmDialog, gameOver, showLeaderboard, showExitConfirmDialog]);
 
   const playButtonClickSound = useSound('/sounds/button-click.mp3', 0.6, isSoundEnabled);
   const playScoreSelectSound = useSound('/sounds/score-select.mp3', 0.7, isSoundEnabled);
@@ -648,10 +697,7 @@ const App: React.FC = () => {
         isSoundEnabled={isSoundEnabled}
         onToggleSound={toggleSound}
         onLeave={() => { 
-            setGameMode(null); 
-            setGameStarted(false); 
-            setOnlineMatchId(null); 
-            localStorage.removeItem('komboMatchId');
+            setShowExitConfirmDialog(true);
         }}
       />
     );
@@ -661,7 +707,7 @@ const App: React.FC = () => {
         <header className="mb-3 sm:mb-4 text-center py-2 sm:py-3.5 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
             <button 
-                onClick={() => { playButtonClickSound(); setGameStarted(false); setGameMode(null);}} 
+                onClick={() => { playButtonClickSound(); setShowExitConfirmDialog(true); }} 
                 className="p-2 bg-slate-800/50 hover:bg-red-500/20 rounded-lg transition-all text-slate-400 hover:text-red-400 font-bold"
                 title="Menü"
             >
@@ -859,6 +905,19 @@ const App: React.FC = () => {
             }} 
             onCancel={() => {
                 setShowNewGameConfirmDialog(false);
+            }} 
+            playButtonClickSound={playButtonClickSound}
+            playPopupCloseSound={playPopupCloseSound}
+        />,
+        document.body
+      )}
+      {showExitConfirmDialog && createPortal(
+        <ExitConfirmationDialog 
+            onConfirm={() => {
+                exitGameToMainMenu();
+            }} 
+            onCancel={() => {
+                setShowExitConfirmDialog(false);
             }} 
             playButtonClickSound={playButtonClickSound}
             playPopupCloseSound={playPopupCloseSound}
