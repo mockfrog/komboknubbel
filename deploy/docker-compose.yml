@@ -1,0 +1,19 @@
+
+services:
+  komboknubbel:
+    container_name: komboknubbel
+    # Der Build-Kontext zeigt auf das übergeordnete Verzeichnis (Repository-Root),
+    # da sich diese docker-compose.yml im Unterordner "deploy" befindet.
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    volumes:
+      - /opt/komboknubbel:/app/data
+    environment:
+      - PORT=3001
+      - VITE_API_URL=/api
+      - VITE_SOCKET_URL=/
+    restart: unless-stopped
+
