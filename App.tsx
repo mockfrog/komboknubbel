@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Info, Dices, Award, ListChecks, ArrowDown, ArrowUp, RefreshCcw, HelpCircle, CheckCircle, Trophy, RefreshCw } from 'lucide-react';
+import { Info, Dices, Award, ListChecks, ArrowDown, ArrowUp, RefreshCcw, HelpCircle, CheckCircle, Trophy, RefreshCw, Flame, Shield, Zap } from 'lucide-react';
 import { DiceValue, ScoreCategoryKey, Scores, PotentialScores, GameMode } from './types';
 import DiceDisplay from './components/DiceDisplay';
 import Scoresheet from './components/Scoresheet';
@@ -49,7 +49,7 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
   };
   return (
   <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-700/50 scrollbar-thin scrollbar-thumb-slate-700">
+      <div className="bg-slate-900 p-8 rounded-2xl shadow-2xl max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-700/50 scrollbar-thin scrollbar-thumb-slate-700">
           <div className="flex items-center gap-3 mb-6">
               <div className="p-3 bg-yellow-400/10 rounded-xl">
                   <Info className="w-8 h-8 text-yellow-400" />
@@ -130,6 +130,63 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
                   </div>
               </section>
 
+              <section className="space-y-4 border-t border-slate-800 pt-6">
+                  <div className="flex items-center gap-2 text-orange-500 font-bold uppercase text-xs tracking-widest">
+                      <Flame className="w-4 h-4" />
+                      <span>Khaos-Modus 💥</span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-slate-300">
+                      Der <span className="text-orange-400 font-semibold">Khaos-Modus</span> ist ein actiongeladener Multiplayer-Spielmodus. Aktiviere ihn beim Erstellen einer Lobby, um Power-Ups zu sammeln und einzusetzen.
+                  </p>
+                  <p className="text-xs text-slate-400">
+                      Am Ende jedes Zugs besteht eine Chance von <span className="text-white font-bold">35 %</span>, dass du einen <span className="text-white font-bold">Spezialwürfel</span> erhältst. Dieser wird automatisch ausgewürfelt und fügt deinem Inventar eines der folgenden Power-Ups hinzu:
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2 bg-red-950/20 p-4 rounded-xl border border-red-500/20">
+                          <div className="flex items-center gap-1.5 text-red-400 font-bold text-xs uppercase tracking-wider mb-2">
+                              <Zap className="w-4 h-4" />
+                              <span>Offensive (Sabotage)</span>
+                          </div>
+                          <ul className="text-xs space-y-2 text-slate-300">
+                              <li>
+                                  <span className="font-bold text-white">💥 2von3 Runde</span>: Begrenzt den Gegner in seiner nächsten Runde auf max. 2 statt 3 Würfe.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">🚫 JetztNicht</span>: Verhindert 5 Runden lang, dass der Gegner einen Knubbel (Yahtzee) eintragen kann.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">🌫️ Nebel</span>: Verdeckt dem Gegner für 1 Runde während des Würfelns die freien Felder auf dem Zettel.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">🪓 Schwere Last</span>: Gegner darf in seiner nächsten Runde keine Würfel halten.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">💸 Punkte-Spender</span>: Stiehlt dem Gegner die Punkte seiner letzten Eintragung auf dein Bonuskonto.
+                              </li>
+                          </ul>
+                      </div>
+
+                      <div className="space-y-2 bg-emerald-950/20 p-4 rounded-xl border border-emerald-500/20">
+                          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs uppercase tracking-wider mb-2">
+                              <Shield className="w-4 h-4" />
+                              <span>Defensive & Hilfen</span>
+                          </div>
+                          <ul className="text-xs space-y-2 text-slate-300">
+                              <li>
+                                  <span className="font-bold text-white">🔄 Reroll +1</span>: Gewährt dir sofort einen zusätzlichen 4. Wurf in der laufenden Runde.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">🛡️ Stabiler Stand</span>: Macht dich 3 Runden lang immun gegen alle feindlichen Angriffe.
+                              </li>
+                              <li>
+                                  <span className="font-bold text-white">🚀 Punkte-Booster</span>: Verdoppelt den Score deiner nächsten Eintragung auf dem Zettel.
+                              </li>
+                          </ul>
+                      </div>
+                  </div>
+              </section>
+
               <section className="text-xs text-slate-500 bg-slate-800/20 p-3 rounded animate-pulse border border-slate-700/20">
                   <p>💡 <span className="font-bold">Tipp:</span> Wenn du nichts eintragen kannst, musst du ein Feld "streichen" (0 Punkte). Überlege dir gut, wo du Punkte opferst!</p>
               </section>
@@ -144,7 +201,8 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
           </button>
       </div>
   </div>
-)};
+  )
+};
 
  const NewGameConfirmationDialog: React.FC<{onConfirm: () => void, onCancel: () => void, playButtonClickSound: () => void, playPopupCloseSound: () => void}> = ({ onConfirm, onCancel, playButtonClickSound, playPopupCloseSound }) => {
   const handleConfirm = () => {

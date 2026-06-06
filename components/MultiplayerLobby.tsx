@@ -114,7 +114,7 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
                                                 💥 Khaos-Modus aktivieren
                                             </span>
                                             <span className="text-[10px] text-slate-400 block mt-0.5">
-                                                Mit PowerUps, Statuseffekten & Glücksrad!
+                                                Mit PowerUps, Statuseffekten & Spezialwürfeln!
                                             </span>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
