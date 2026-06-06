@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Info, Dices, Award, ListChecks, ArrowDown, ArrowUp, RefreshCcw, HelpCircle, CheckCircle, Trophy, RefreshCw } from 'lucide-react';
 import { DiceValue, ScoreCategoryKey, Scores, PotentialScores, GameMode } from './types';
 import DiceDisplay from './components/DiceDisplay';
@@ -558,6 +559,8 @@ const App: React.FC = () => {
                 setOnlineMatchId(matchId);
                 setOnlineUser({ uid: user.uid, nickname });
              }}
+             isSoundEnabled={isSoundEnabled}
+             onToggleSound={toggleSound}
           />
         );
     } else {
@@ -573,6 +576,7 @@ const App: React.FC = () => {
         matchId={onlineMatchId}
         currentUser={onlineUser}
         isSoundEnabled={isSoundEnabled}
+        onToggleSound={toggleSound}
         onLeave={() => { 
             setGameMode(null); 
             setGameStarted(false); 
@@ -584,7 +588,7 @@ const App: React.FC = () => {
   } else {
     screenContent = (
       <div className="container mx-auto p-2 sm:p-4 max-w-6xl bg-gradient-to-br from-slate-800 via-slate-900 to-black text-slate-200 min-h-screen">
-        <header className="mb-4 sm:mb-6 text-center py-4 sm:py-6 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
+        <header className="mb-3 sm:mb-4 text-center py-2 sm:py-3.5 bg-slate-700/50 backdrop-blur-sm shadow-xl rounded-2xl border border-slate-600/30 relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex gap-2">
             <button 
                 onClick={() => { playButtonClickSound(); setGameStarted(false); setGameMode(null);}} 
@@ -605,7 +609,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="px-4">
-            <h1 className="text-2xl sm:text-4xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
+            <h1 className="text-xl sm:text-3xl font-bold text-yellow-400 font-game-title" style={{textShadow: '1px 1px 0px rgba(0,0,0,0.3)'}}>
               {gameMode === 'classic' ? 'KLASSISCH' : 'KOMBO-KNUBBEL'}
             </h1>
             <p className="text-[10px] sm:text-xs text-slate-400 font-medium tracking-widest uppercase mt-1">Einzelspieler Modus • {gameMode === 'classic' ? '1 Spalte' : '6 Spalten'}</p>
@@ -627,60 +631,6 @@ const App: React.FC = () => {
             </button>
           </div>
         </header>
-
-        {gameOver && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
-            <div className="bg-slate-800 border-2 border-yellow-400 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_-12px_rgba(250,204,21,0.5)] text-center animate-scaleInUp">
-              <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-400 text-slate-900 shadow-lg">
-                <Trophy className="w-8 h-8" />
-              </div>
-              
-              <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Spiel Beendet!</h2>
-              
-              <div className="bg-slate-900/50 rounded-2xl p-4 mb-6 border border-slate-700">
-                <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block mb-1">Deine Punkte</span>
-                <span className="text-5xl font-black text-yellow-400 tabular-nums">
-                  {finalGrandTotalForDisplay}
-                </span>
-                
-                {scoreSubmitted && isNewPersonalBest && (
-                   <div className="mt-4 animate-bounce">
-                     <span className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                        Neuer Highscore! 🎉
-                     </span>
-                     <p className="text-emerald-400 text-xs font-bold mt-2">Du hast dich selbst übertroffen!</p>
-                   </div>
-                )}
-
-                {scoreSubmitted && !isNewPersonalBest && (
-                  <p className="text-slate-500 text-xs font-bold mt-3">Eingetragen in die Bestenliste</p>
-                )}
-                
-                {!scoreSubmitted && (
-                   <div className="flex items-center justify-center gap-2 mt-3 text-slate-400 animate-pulse">
-                     <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                     <span className="text-xs font-bold uppercase">Wird gespeichert...</span>
-                   </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={handleRequestNewGame}
-                  className="w-full py-4 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className="w-5 h-5" /> Noch eine Runde
-                </button>
-                <button 
-                  onClick={() => { playButtonClickSound(); setGameStarted(false); setGameMode(null); setGameOver(false); }}
-                  className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-2xl transition-all active:scale-95 text-sm"
-                >
-                  Zum Hauptmenü
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="flex flex-col lg:flex-row gap-6 items-start">
             <div className="flex-1 w-full overflow-x-auto bg-slate-800/40 backdrop-blur-sm p-4 rounded-3xl border border-slate-700/30 shadow-inner">
@@ -774,8 +724,65 @@ const App: React.FC = () => {
   return (
     <>
       {screenContent}
-      {showRules && <RulesPopup onClose={() => setShowRules(false)} playPopupCloseSound={playPopupCloseSound} />}
-      {showNewGameConfirmDialog && gameMode && // Ensure gameMode is set before confirming new game
+      {gameOver && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-800 border-2 border-yellow-400 rounded-3xl p-8 max-w-sm w-full shadow-[0_0_50px_-12px_rgba(250,204,21,0.5)] text-center animate-scaleInUp">
+            <div className="mb-4 inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-400 text-slate-900 shadow-lg">
+              <Trophy className="w-8 h-8" />
+            </div>
+            
+            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight">Spiel Beendet!</h2>
+            
+            <div className="bg-slate-900/50 rounded-2xl p-4 mb-6 border border-slate-700">
+              <span className="text-slate-400 text-xs font-bold uppercase tracking-widest block mb-1">Deine Punkte</span>
+              <span className="text-5xl font-black text-yellow-400 tabular-nums">
+                {finalGrandTotalForDisplay}
+              </span>
+              
+              {scoreSubmitted && isNewPersonalBest && (
+                 <div className="mt-4 animate-bounce">
+                   <span className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                      Neuer Highscore! 🎉
+                   </span>
+                   <p className="text-emerald-400 text-xs font-bold mt-2">Du hast dich selbst übertroffen!</p>
+                 </div>
+              )}
+
+              {scoreSubmitted && !isNewPersonalBest && (
+                <p className="text-slate-500 text-xs font-bold mt-3">Eingetragen in die Bestenliste</p>
+              )}
+              
+              {!scoreSubmitted && (
+                 <div className="flex items-center justify-center gap-2 mt-3 text-slate-400 animate-pulse">
+                   <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                   <span className="text-xs font-bold uppercase">Wird gespeichert...</span>
+                 </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleRequestNewGame}
+                className="w-full py-4 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-5 h-5" /> Noch eine Runde
+              </button>
+              <button 
+                onClick={() => { playButtonClickSound(); setGameStarted(false); setGameMode(null); setGameOver(false); }}
+                className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-2xl transition-all active:scale-95 text-sm"
+              >
+                Zum Hauptmenü
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {showRules && createPortal(
+        <RulesPopup onClose={() => setShowRules(false)} playPopupCloseSound={playPopupCloseSound} />,
+        document.body
+      )}
+      {showNewGameConfirmDialog && gameMode && createPortal(
         <NewGameConfirmationDialog 
             onConfirm={() => {
                 performStartNewGame(gameMode); // Restart with current mode
@@ -785,7 +792,9 @@ const App: React.FC = () => {
             }} 
             playButtonClickSound={playButtonClickSound}
             playPopupCloseSound={playPopupCloseSound}
-        />}
+        />,
+        document.body
+      )}
     </>
   );
 };

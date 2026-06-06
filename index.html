@@ -72,6 +72,28 @@
         animation: fadeInScaleUp 0.8s ease-out forwards;
       }
 
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.25s ease-out forwards;
+      }
+
+      @keyframes scaleInUp {
+        0% {
+          opacity: 0;
+          transform: scale(0.9) translateY(20px);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      .animate-scaleInUp {
+        animation: scaleInUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
       @keyframes floatDice {
         0%, 100% {
           transform: translateY(0) rotate(-5deg);
@@ -95,6 +117,75 @@
         /* Example: Use a specific game-like font if available, or a more rounded sans-serif */
         /* font-family: 'Luckiest Guy', cursive; */ /* Requires Google Font import */
          font-family: 'Arial Rounded MT Bold', 'Helvetica Rounded', Arial, sans-serif;
+      }
+
+      /* Nebel-Effekt Animationen */
+      @keyframes fogMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .foggy-overlay-bg {
+        background: linear-gradient(
+          135deg, 
+          rgba(15, 23, 42, 0.97) 25%, 
+          rgba(30, 27, 75, 0.98) 50%, 
+          rgba(17, 24, 39, 0.97) 75%
+        );
+        background-size: 400% 400%;
+        animation: fogMove 8s ease infinite;
+      }
+
+      /* Glow & Pulse Effects */
+      @keyframes shieldPulse {
+        0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+        50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); }
+      }
+      .shield-pulse {
+        animation: shieldPulse 2s infinite;
+      }
+
+      @keyframes wheelSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(1440deg); }
+      }
+      .animate-wheel-spin {
+        animation: wheelSpin 2.5s cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+      }
+
+      @keyframes powerupGlow {
+        0%, 100% { transform: scale(1); filter: brightness(1); }
+        50% { transform: scale(1.05); filter: brightness(1.2); }
+      }
+      .powerup-btn-glow {
+        animation: powerupGlow 1.5s ease-in-out infinite;
+      }
+
+      @keyframes textShimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+      .shimmer-text {
+        background: linear-gradient(90deg, #f59e0b, #fef08a, #f59e0b);
+        background-size: 200% auto;
+        color: transparent;
+        background-clip: text;
+        -webkit-background-clip: text;
+        animation: textShimmer 3s linear infinite;
+      }
+
+      @keyframes slideDown {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -20px) scale(0.95);
+        }
+        100% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+      }
+      .animate-slideDown {
+        animation: slideDown 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
       }
 
     </style>
