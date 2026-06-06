@@ -65,7 +65,7 @@ const AnimatedDice: React.FC<{ animationClass?: string }> = ({ animationClass })
   ], []);
 
   return (
-    <div className="flex space-x-4 mb-12">
+    <div className="flex space-x-4 mb-4">
       {diceValues.map((value, i) => (
          <div
             key={i}
@@ -138,18 +138,17 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-6 pb-16 selection:bg-yellow-400 selection:text-slate-800">
-      <header className="text-center mb-10 animate-fadeInScaleUp" style={{ animationDelay: '0.2s', opacity: 0 }}>
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-game-title font-bold tracking-wide"
+      <header className="text-center mb-3 animate-fadeInScaleUp" style={{ animationDelay: '0.2s', opacity: 0 }}>
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-game-title font-bold tracking-wide"
             style={{textShadow: '2px 2px 0px rgba(251, 191, 36, 0.7), 4px 4px 0px rgba(0,0,0,0.2)'}} // yellow-400
         >
           Kombo-Knubbel
         </h1>
-        <p className="text-lg md:text-xl text-slate-300 mt-3">Das ultimative Würfelspiel!</p>
       </header>
 
       <AnimatedDice animationClass="animate-floatDice" />
 
-      <div className="mb-8 w-full max-w-xs animate-fadeInScaleUp flex flex-col gap-2" style={{ animationDelay: '0.4s', opacity: 0 }}>
+      <div className="mb-6 w-full max-w-xs animate-fadeInScaleUp flex flex-col gap-2" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <label htmlFor="nickname" className="text-sm font-semibold text-slate-300 text-center uppercase tracking-wider">Dein Name</label>
           <input 
               id="nickname"
@@ -166,28 +165,32 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
           {error && <p className="text-red-400 text-xs text-center mt-1 font-semibold">{error}</p>}
       </div>
 
-      <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 mb-6 animate-fadeInScaleUp" style={{ animationDelay: '0.6s', opacity: 0 }}>
+      <div className="w-full max-w-xs mb-4 animate-fadeInScaleUp" style={{ animationDelay: '0.5s', opacity: 0 }}>
         <button
           onClick={() => handleStartGameClick('kombo')}
-          className="bg-yellow-400 hover:bg-yellow-500 text-slate-800 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-yellow-300"
+          className="w-full bg-yellow-400 hover:bg-yellow-500 text-slate-800 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-yellow-300"
           aria-label="Kombo-Knubbel solo spielen"
         >
           Kombo-Knubbel Solo
         </button>
+      </div>
+
+      <div className="w-full max-w-xs mb-4 animate-fadeInScaleUp" style={{ animationDelay: '0.6s', opacity: 0 }}>
         <button
           onClick={() => handleStartGameClick('classic')}
-          className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-teal-300"
+          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-teal-300"
           aria-label="Klassisches Knubbel solo spielen"
         >
           Klassisch Solo
         </button>
       </div>
-      <div className="mb-6 animate-fadeInScaleUp flex justify-center" style={{ animationDelay: '0.7s', opacity: 0 }}>
-         <button
+
+      <div className="w-full max-w-xs mb-8 animate-fadeInScaleUp" style={{ animationDelay: '0.7s', opacity: 0 }}>
+        <button
           onClick={handleStartMultiplayer}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-indigo-300 w-full sm:w-auto"
+          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out text-lg focus:outline-none focus:ring-4 focus:ring-indigo-300"
         >
-          🌐 Mit Freunden spielen (Host / Invite-Code)
+          🌐 Mit Freunden spielen
         </button>
       </div>
        <div className="flex flex-wrap justify-center items-center gap-4 animate-fadeInScaleUp" style={{ animationDelay: '0.8s', opacity: 0 }}>

@@ -12,6 +12,19 @@
         font-family: 'Inter', sans-serif; /* Example font, Tailwind uses sans-serif by default */
         background-color: #0f172a; /* slate-900 as a fallback */
         color: #cbd5e1; /* slate-300 for base text */
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      input, textarea {
+        user-select: text;
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+      }
+      * {
+        -webkit-tap-highlight-color: transparent;
       }
       @keyframes blink {
         50% { opacity: 0.5; }

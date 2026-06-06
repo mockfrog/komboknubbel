@@ -65,8 +65,8 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6">
-            <div className="bg-slate-800 p-8 rounded-lg shadow-xl w-full max-w-md">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-4 sm:p-6">
+            <div className="bg-slate-800 p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-3xl font-bold text-yellow-400">Mit Freunden spielen</h2>
                     <div className="flex items-center gap-2">
@@ -146,18 +146,18 @@ export const MultiplayerLobby: React.FC<MultiplayerLobbyProps> = ({ onGoBack, on
 
                                 <div className="border-t border-slate-700 pt-6">
                                     <h3 className="text-xl font-semibold mb-4 text-sky-400">Spiel beitreten</h3>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col sm:flex-row gap-2">
                                         <input
                                             type="text"
                                             value={inviteCode}
                                             onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                                            placeholder="Einladecode (z.B. A1B2C)"
-                                            className="flex-1 p-3 rounded bg-slate-700 text-white outline-none uppercase font-mono tracking-widest"
+                                            placeholder="Einladecode (z.B. A1B2CD)"
+                                            className="flex-1 p-3 rounded bg-slate-700 text-white outline-none uppercase font-mono tracking-widest text-center sm:text-left"
                                         />
                                         <button
                                             onClick={() => { playButtonClickSound(); handleJoinMatch(); }}
                                             disabled={!inviteCode || inviteCode.length !== 6}
-                                            className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-6 rounded disabled:opacity-50"
+                                            className="bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-6 rounded disabled:opacity-50 w-full sm:w-auto"
                                         >
                                             Beitreten
                                         </button>
