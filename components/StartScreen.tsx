@@ -57,21 +57,153 @@ const StartScreenDiceFace: React.FC<{ value: number }> = ({ value }) => {
 };
 
 
-const AnimatedDice: React.FC<{ animationClass?: string }> = ({ animationClass }) => {
+const BackgroundDice: React.FC = () => {
   const diceValues = React.useMemo(() => [
+    Math.floor(Math.random() * 6) + 1,
+    Math.floor(Math.random() * 6) + 1,
     Math.floor(Math.random() * 6) + 1,
     Math.floor(Math.random() * 6) + 1,
     Math.floor(Math.random() * 6) + 1,
   ], []);
 
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const elementsRef = React.useRef<(HTMLDivElement | null)[]>([]);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+
+    const handleResize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+    };
+    window.addEventListener('resize', handleResize);
+
+    const size = window.innerWidth < 768 ? 64 : 96;
+
+    const states = elementsRef.current.map((el) => {
+      const x = Math.random() * (width - size);
+      const y = Math.random() * (height - size);
+      const speedMultiplier = 2.0 + Math.random() * 2.5;
+      const angleDir = Math.random() * Math.PI * 2;
+      const vx = Math.cos(angleDir) * speedMultiplier;
+      const vy = Math.sin(angleDir) * speedMultiplier;
+      const angle = Math.random() * 360;
+      const vAngle = (Math.random() - 0.5) * 4;
+
+      return { x, y, vx, vy, angle, vAngle, el };
+    });
+
+    let animationId: number;
+    const updatePhysics = () => {
+      const currentSize = window.innerWidth < 768 ? 64 : 96;
+
+      // 1. Move dice
+      states.forEach(state => {
+        if (!state.el) return;
+        state.x += state.vx;
+        state.y += state.vy;
+        state.angle += state.vAngle;
+      });
+
+      // 2. Resolve mutual collisions between dice (elastic collision)
+      for (let i = 0; i < states.length; i++) {
+        for (let j = i + 1; j < states.length; j++) {
+          const s1 = states[i];
+          const s2 = states[j];
+          if (!s1.el || !s2.el) continue;
+
+          const dx = s2.x - s1.x;
+          const dy = s2.y - s1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < currentSize) {
+            const overlap = currentSize - dist;
+            const nx = dx / (dist || 1);
+            const ny = dy / (dist || 1);
+
+            // Positional correction to prevent sticking
+            s1.x -= nx * (overlap / 2);
+            s1.y -= ny * (overlap / 2);
+            s2.x += nx * (overlap / 2);
+            s2.y += ny * (overlap / 2);
+
+            // Relative velocity projected onto normal
+            const kx = s1.vx - s2.vx;
+            const ky = s1.vy - s2.vy;
+            const p = nx * kx + ny * ky;
+
+            // Only bounce if they are moving towards each other
+            if (p > 0) {
+              s1.vx -= nx * p;
+              s1.vy -= ny * p;
+              s2.vx += nx * p;
+              s2.vy += ny * p;
+
+              // Swap and add slight spin variation on collision
+              const tempVAngle = s1.vAngle;
+              s1.vAngle = s2.vAngle * 0.8 + (Math.random() - 0.5) * 4;
+              s2.vAngle = tempVAngle * 0.8 + (Math.random() - 0.5) * 4;
+            }
+          }
+        }
+      }
+
+      // 3. Resolve boundary collisions and render
+      states.forEach(state => {
+        if (!state.el) return;
+
+        if (state.x <= 0) {
+          state.x = 0;
+          state.vx = Math.abs(state.vx);
+          state.vAngle = (Math.random() - 0.5) * 8;
+        } else if (state.x >= width - currentSize) {
+          state.x = width - currentSize;
+          state.vx = -Math.abs(state.vx);
+          state.vAngle = (Math.random() - 0.5) * 8;
+        }
+
+        if (state.y <= 0) {
+          state.y = 0;
+          state.vy = Math.abs(state.vy);
+          state.vAngle = (Math.random() - 0.5) * 8;
+        } else if (state.y >= height - currentSize) {
+          state.y = height - currentSize;
+          state.vy = -Math.abs(state.vy);
+          state.vAngle = (Math.random() - 0.5) * 8;
+        }
+
+        state.el.style.transform = `translate3d(${state.x}px, ${state.y}px, 0) rotate(${state.angle}deg)`;
+      });
+
+      animationId = requestAnimationFrame(updatePhysics);
+    };
+
+    animationId = requestAnimationFrame(updatePhysics);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   return (
-    <div className="flex space-x-4 mb-4">
+    <div ref={containerRef} className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
       {diceValues.map((value, i) => (
-         <div
-            key={i}
-            className={`w-16 h-16 md:w-20 md:h-20 bg-red-500 rounded-lg shadow-xl p-2 flex items-center justify-center ${animationClass} ${i === 1 ? 'animate-floatDice-delay1' : i === 2 ? 'animate-floatDice-delay2' : 'animate-floatDice' }`}
+        <div
+          key={i}
+          ref={el => { elementsRef.current[i] = el; }}
+          className="absolute w-16 h-16 md:w-24 md:h-24 bg-red-500 rounded-xl shadow-2xl p-2 flex items-center justify-center will-change-transform"
+          style={{
+            left: 0,
+            top: 0,
+            transform: 'translate3d(0, 0, 0)',
+          }}
         >
-            <StartScreenDiceFace value={value} />
+          <StartScreenDiceFace value={value} />
         </div>
       ))}
     </div>
@@ -137,7 +269,9 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
 
 
   return (
-    <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-6 pb-16 selection:bg-yellow-400 selection:text-slate-800">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-6 pb-16 selection:bg-yellow-400 selection:text-slate-800 overflow-hidden">
+      <BackgroundDice />
+
       <header className="text-center mb-3 animate-fadeInScaleUp" style={{ animationDelay: '0.2s', opacity: 0 }}>
         <h1 className="text-4xl sm:text-6xl md:text-7xl font-game-title font-bold tracking-wide"
             style={{textShadow: '2px 2px 0px rgba(251, 191, 36, 0.7), 4px 4px 0px rgba(0,0,0,0.2)'}} // yellow-400
@@ -145,8 +279,6 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
           Kombo-Knubbel
         </h1>
       </header>
-
-      <AnimatedDice animationClass="animate-floatDice" />
 
       <div className="mb-6 w-full max-w-xs animate-fadeInScaleUp flex flex-col gap-2" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <label htmlFor="nickname" className="text-sm font-semibold text-slate-300 text-center uppercase tracking-wider">Dein Name</label>

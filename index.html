@@ -125,6 +125,33 @@
         animation: floatDice 3.5s ease-in-out 0.6s infinite;
       }
 
+      /* Background Tumble Animations */
+      @keyframes tumble1 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(60px, -80px) rotate(360deg); }
+      }
+      @keyframes tumble2 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-80px, 70px) rotate(-360deg); }
+      }
+      @keyframes tumble3 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(70px, 50px) rotate(360deg); }
+      }
+      @keyframes tumble4 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-50px, -90px) rotate(-360deg); }
+      }
+      @keyframes tumble5 {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(80px, -40px) rotate(540deg); }
+      }
+      .animate-tumble-1 { animation: tumble1 5s ease-in-out infinite; }
+      .animate-tumble-2 { animation: tumble2 6.5s ease-in-out infinite; }
+      .animate-tumble-3 { animation: tumble3 5.5s ease-in-out infinite; }
+      .animate-tumble-4 { animation: tumble4 7s ease-in-out infinite; }
+      .animate-tumble-5 { animation: tumble5 4.5s ease-in-out infinite; }
+
       /* Optional: A more playful font for the start screen if Inter feels too plain */
       .font-game-title {
         /* Example: Use a specific game-like font if available, or a more rounded sans-serif */
