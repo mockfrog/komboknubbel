@@ -137,7 +137,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
 
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-6 selection:bg-yellow-400 selection:text-slate-800">
+    <div className="relative flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white p-6 pb-16 selection:bg-yellow-400 selection:text-slate-800">
       <header className="text-center mb-10 animate-fadeInScaleUp" style={{ animationDelay: '0.2s', opacity: 0 }}>
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-game-title font-bold tracking-wide"
             style={{textShadow: '2px 2px 0px rgba(251, 191, 36, 0.7), 4px 4px 0px rgba(0,0,0,0.2)'}} // yellow-400
@@ -220,7 +220,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStartGame, onShowRules, isS
       {showLeaderboard && (
           <Leaderboard onClose={() => setShowLeaderboard(false)} />
       )}
-      <footer className="absolute bottom-6 text-center text-slate-400 text-sm animate-fadeInScaleUp" style={{ animationDelay: '1s', opacity: 0 }}>
+      <footer className="absolute bottom-6 left-0 right-0 text-center text-slate-400 text-sm animate-fadeInScaleUp" style={{ animationDelay: '1s', opacity: 0 }}>
           <p>&copy; {new Date().getFullYear()} mockfrog</p>
       </footer>
     </div>
