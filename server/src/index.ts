@@ -60,15 +60,92 @@ app.post('/api/leaderboard', (req, res) => {
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
 
-  socket.on('joinMatch', (inviteCode) => {
+  socket.on('joinMatch', (data) => {
+    let inviteCode: string;
+    let userId: string | undefined;
+
+    if (typeof data === 'object' && data !== null) {
+      inviteCode = data.inviteCode;
+      userId = data.userId;
+    } else {
+      inviteCode = data;
+    }
+
     socket.join(inviteCode);
-    console.log(`User ${socket.id} joined match ${inviteCode}`);
+    socket.data.inviteCode = inviteCode;
+    if (userId) {
+      socket.data.userId = userId;
+    }
+    if (!socket.data.mediaState) {
+      socket.data.mediaState = { isMuted: false, isVideoOff: false };
+    }
+
+    console.log(`User ${socket.id} (userId: ${userId || 'unknown'}) joined match ${inviteCode}`);
+
+    // Tell others in the room that a new peer joined
+    socket.to(inviteCode).emit('peer-joined', { 
+      socketId: socket.id, 
+      userId,
+      mediaState: socket.data.mediaState
+    });
+
+    // Gather current peers in the room to send to the newly joined peer
+    const clientsInRoom = io.sockets.adapter.rooms.get(inviteCode);
+    const peers = [];
+    if (clientsInRoom) {
+      for (const clientId of clientsInRoom) {
+        if (clientId !== socket.id) {
+          const clientSocket = io.sockets.sockets.get(clientId);
+          if (clientSocket) {
+            peers.push({
+              socketId: clientId,
+              userId: clientSocket.data.userId,
+              mediaState: clientSocket.data.mediaState || { isMuted: false, isVideoOff: false }
+            });
+          }
+        }
+      }
+    }
+    socket.emit('current-peers', peers);
   });
 
   socket.on('updateMatch', (inviteCode, newState) => {
     db.prepare('UPDATE matches SET state = ?, updatedAt = CURRENT_TIMESTAMP WHERE inviteCode = ?')
       .run(JSON.stringify(newState), inviteCode);
     io.to(inviteCode).emit('matchUpdated', newState);
+  });
+
+  // WebRTC signaling
+  socket.on('signal', ({ to, signal }) => {
+    io.to(to).emit('signal', { from: socket.id, signal });
+  });
+
+  // Media toggles
+  socket.on('toggle-media', (state) => {
+    socket.data.mediaState = state;
+    if (socket.data.inviteCode) {
+      socket.to(socket.data.inviteCode).emit('peer-media-toggled', {
+        socketId: socket.id,
+        userId: socket.data.userId,
+        ...state
+      });
+    }
+  });
+
+  // Explicit leave
+  socket.on('leaveMatch', (inviteCode) => {
+    socket.leave(inviteCode);
+    socket.to(inviteCode).emit('peer-left', { socketId: socket.id, userId: socket.data.userId });
+    console.log(`User ${socket.id} explicitly left match ${inviteCode}`);
+  });
+
+  // Handle disconnecting to broadcast leave event
+  socket.on('disconnecting', () => {
+    for (const room of socket.rooms) {
+      if (room !== socket.id) {
+        socket.to(room).emit('peer-left', { socketId: socket.id, userId: socket.data.userId });
+      }
+    }
   });
 
   socket.on('disconnect', () => {

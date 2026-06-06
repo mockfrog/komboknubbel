@@ -5,6 +5,7 @@ import { submitScore } from '../services/leaderboard';
 import { GameMode } from '../types';
 import DiceDisplay from './DiceDisplay';
 import Scoresheet from './Scoresheet';
+import { VideoChat } from './VideoChat';
 
 const POWERUP_DETAILS: Record<string, { name: string; icon: string; desc: string; isOffensive: boolean; bgClass: string }> = {
     two_rolls_only: {
@@ -211,7 +212,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     const rollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        socket.emit('joinMatch', matchId);
+        socket.emit('joinMatch', { inviteCode: matchId, userId: currentUser?.uid });
 
         const handleUpdate = (data: MatchState) => {
             const prevMatch = matchRef.current;
@@ -530,6 +531,14 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                         ))}
                     </ul>
 
+                    <div className="mb-6">
+                        <VideoChat 
+                            matchId={matchId} 
+                            currentUser={currentUser} 
+                            players={match.players} 
+                        />
+                    </div>
+
                     {isHost ? (
                         <button onClick={handleStart} className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold rounded shadow mb-4">
                             Spiel starten
@@ -652,10 +661,16 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                                     {isGameOver ? 'SPIEL ENDE' : localIsRolling ? 'ROLLING...' : `WURF (${match.rollsLeft})`}
                                 </span>
                             </button>
-                         </div>
-                     </div>
+                          </div>
+                      </div>
 
-                     {/* PowerUps (Khaos Mode Inventory & Wheels) */}
+                      <VideoChat 
+                          matchId={matchId} 
+                          currentUser={currentUser} 
+                          players={match.players} 
+                      />
+
+                      {/* PowerUps (Khaos Mode Inventory & Wheels) */}
                      {match.isKhaosMode && (
                          <div className="bg-slate-800/60 backdrop-blur-md p-5 rounded-3xl border border-purple-500/20 shadow-2xl relative overflow-hidden space-y-4">
                              {/* Glow behind header */}

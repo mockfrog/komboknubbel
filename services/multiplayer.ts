@@ -77,7 +77,7 @@ export async function createMatch(hostId: string, nickname: string, gameMode: Ga
         body: JSON.stringify({ hostId, nickname, gameMode, initialState })
     });
     const { inviteCode } = await response.json();
-    socket.emit('joinMatch', inviteCode);
+    socket.emit('joinMatch', { inviteCode, userId: hostId });
     return inviteCode;
 }
 
@@ -90,7 +90,7 @@ export async function joinMatch(code: string, userId: string, nickname: string) 
         throw new Error("Match hat bereits begonnen oder ist beendet");
     }
     if (data.playerIds.includes(userId)) {
-        socket.emit('joinMatch', code);
+        socket.emit('joinMatch', { inviteCode: code, userId });
         return;
     }
     if (data.playerIds.length >= 6) {
@@ -107,7 +107,7 @@ export async function joinMatch(code: string, userId: string, nickname: string) 
     };
 
     socket.emit('updateMatch', code, newState);
-    socket.emit('joinMatch', code);
+    socket.emit('joinMatch', { inviteCode: code, userId });
 }
 
 export async function startMatch(code: string, match: MatchState) {
