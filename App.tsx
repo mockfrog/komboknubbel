@@ -214,7 +214,7 @@ const RulesPopup: React.FC<{onClose: () => void, playPopupCloseSound: () => void
       onCancel();
   };
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[110]">
     <div className="bg-slate-800 p-6 rounded-lg shadow-2xl max-w-md w-full border border-slate-700">
       <h3 className="text-xl font-semibold mb-4 text-yellow-400 font-game-title">Neues Spiel starten?</h3>
       <p className="text-slate-200 mb-6">
@@ -250,7 +250,7 @@ const ExitConfirmationDialog: React.FC<{onConfirm: () => void, onCancel: () => v
       onCancel();
   };
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60] animate-fadeIn">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[110] animate-fadeIn">
       <div className="bg-slate-800 p-6 rounded-2xl shadow-2xl max-w-md w-full border border-slate-700 animate-scaleInUp">
         <h3 className="text-xl font-bold mb-4 text-yellow-400 font-game-title">Spiel verlassen?</h3>
         <p className="text-slate-200 mb-6">
