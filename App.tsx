@@ -754,8 +754,12 @@ const App: React.FC = () => {
         currentUser={onlineUser}
         isSoundEnabled={isSoundEnabled}
         onToggleSound={toggleSound}
-        onLeave={() => { 
-            setShowExitConfirmDialog(true);
+        onLeave={(forceExit) => { 
+            if (forceExit) {
+              exitGameToMainMenu();
+            } else {
+              setShowExitConfirmDialog(true);
+            }
         }}
       />
     );

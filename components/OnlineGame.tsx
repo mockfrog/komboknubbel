@@ -121,7 +121,7 @@ function calculateCurrentPotentialScores(
 interface OnlineGameProps {
     matchId: string;
     currentUser: any;
-    onLeave: () => void;
+    onLeave: (force?: boolean) => void;
     isSoundEnabled: boolean;
     onToggleSound?: () => void;
 }
@@ -440,8 +440,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
     }, [match, myTurn, viewedUserId, currentUser?.uid]);
 
     const handleLeave = async () => {
+        const isFinished = match?.status === 'finished';
         if (!match || !currentUser) {
-            onLeave();
+            onLeave(true);
             return;
         }
         try {
@@ -449,7 +450,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
         } catch (error) {
             console.error("Fehler beim Verlassen des Matches:", error);
         } finally {
-            onLeave();
+            onLeave(isFinished);
         }
     };
 
@@ -755,7 +756,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ matchId, currentUser, onLeave, 
                          {scoreSubmitted && isNewPersonalBest && (
                              <div className="mt-4 animate-bounce">
                                  <span className="bg-yellow-400 text-slate-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                                     Persönliche Bestzeit! 🎉
+                                     Persönlicher Rekord! 🎉
                                  </span>
                                  <p className="text-yellow-400 text-xs font-bold mt-2">Glückwunsch zur Verbesserung!</p>
                              </div>
